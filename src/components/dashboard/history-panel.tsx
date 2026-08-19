@@ -65,8 +65,12 @@ export function HistoryPanel({ onReuse, compact }: Props) {
               variant="outline"
               size="sm"
               onClick={() => {
-                clear();
-                toast.success("History cleared");
+                try {
+                  clear();
+                  toast.success("History cleared");
+                } catch {
+                  toast.error("Storage full — couldn't clear history");
+                }
               }}
               className="h-9"
             >
@@ -127,12 +131,16 @@ export function HistoryPanel({ onReuse, compact }: Props) {
                           <RotateCw className="mr-1 h-3 w-3" /> Reuse
                         </Button>
                       )}
-                      <Button
+                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          remove(e.id);
-                          toast.success("Entry deleted");
+                          try {
+                            remove(e.id);
+                            toast.success("Entry deleted");
+                          } catch {
+                            toast.error("Storage full — couldn't persist removal");
+                          }
                         }}
                         className="ml-auto h-7 px-2 text-xs text-muted-foreground hover:text-rose-400"
                       >

@@ -19,16 +19,26 @@ interface HistoryStore {
 
 const MAX_ENTRIES = 50;
 
+function safeSetItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Quota exceeded — silently ignore. The in-memory state is still updated
+    // so the UI stays consistent; only persistence is skipped.
+  }
+}
+
 export const useHistory = create<HistoryStore>()(
   persist(
     (set, get) => ({
       entries: [],
-      add: (entry) =>
-        set((s) => ({
-          entries: [entry, ...s.entries].slice(0, MAX_ENTRIES),
-        })),
-      remove: (id) =>
-        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
+      add: (entry) => {
+        const next = [entry, ...get().entries].slice(0, MAX_ENTRIES);
+        set({ entries: next });
+      },
+      remove: (id) => {
+        set({ entries: get().entries.filter((e) => e.id !== id) });
+      },
       clear: () => set({ entries: [] }),
       getById: (id) => get().entries.find((e) => e.id === id),
       search: (q) => {
@@ -44,7 +54,22 @@ export const useHistory = create<HistoryStore>()(
     {
       name: "captionai:history",
       version: 1,
-      // Don't store huge dataURLs forever — cap to last 50 by slicing above.
+      storage: {
+        getItem: (name) => {
+          try {
+            const raw = localStorage.getItem(name);
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            // If stored data is corrupt or too large to parse, clear it
+            try { localStorage.removeItem(name); } catch {}
+            return null;
+          }
+        },
+        setItem: (name, value) => safeSetItem(name, JSON.stringify(value)),
+        removeItem: (name) => {
+          try { localStorage.removeItem(name); } catch {}
+        },
+      },
     },
   ),
 );

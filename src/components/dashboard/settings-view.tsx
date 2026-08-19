@@ -13,6 +13,8 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Brain,
+  Cpu,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,12 +26,18 @@ import { useTheme } from "next-themes";
 import { useNav } from "@/lib/nav-store";
 import { toast } from "sonner";
 import { useState } from "react";
-import type { ThemeMode } from "@/lib/types";
+import type { ThemeMode, InferenceProvider } from "@/lib/types";
 
 const themes: { key: ThemeMode; label: string; icon: typeof Moon }[] = [
   { key: "dark", label: "Dark", icon: Moon },
   { key: "light", label: "Light", icon: Sun },
   { key: "system", label: "System", icon: Monitor },
+];
+
+const providers: { key: InferenceProvider; label: string; description: string; icon: typeof Brain }[] = [
+  { key: "auto", label: "Auto", description: "Automatically select best available provider", icon: Brain },
+  { key: "notebook-tensorflow", label: "Notebook (TensorFlow)", description: "Exact DenseNet201 + LSTM from Flickr8K notebook", icon: Brain },
+  { key: "huggingface-blip", label: "HuggingFace BLIP", description: "Pre-trained BLIP base model (works out of the box)", icon: Cpu },
 ];
 
 export function SettingsView() {
@@ -134,6 +142,56 @@ export function SettingsView() {
             checked={s.autoCopyEnabled}
             onCheckedChange={(v) => s.set("autoCopyEnabled", v)}
           />
+        </div>
+      </Card>
+
+      {/* Inference Provider */}
+      <Card className="border-border/40 bg-card/40 p-6 backdrop-blur-sm">
+        <SectionHeader
+          icon={Brain}
+          title="Inference Provider"
+          description="Choose which model backend to use for caption generation."
+        />
+        <div className="mt-4 space-y-3">
+          {providers.map((p) => {
+            const active = s.inferenceProvider === p.key;
+            return (
+              <button
+                key={p.key}
+                onClick={() => s.setInferenceProvider(p.key)}
+                className={`group relative flex items-center gap-4 rounded-xl border-2 p-4 transition-all ${
+                  active
+                    ? "border-indigo-500 bg-indigo-500/10"
+                    : "border-border/40 bg-card/30 hover:border-border"
+                }`}
+              >
+                <p.icon
+                  className={`h-6 w-6 shrink-0 ${active ? "text-indigo-400" : "text-muted-foreground"}`}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-medium ${active ? "text-indigo-400" : ""}`}
+                    >
+                      {p.label}
+                    </span>
+                    {active && (
+                      <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
+                </div>
+                {active && (
+                  <motion.div
+                    layoutId="provider-active"
+                    className="absolute inset-0 rounded-xl bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/30"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </Card>
 

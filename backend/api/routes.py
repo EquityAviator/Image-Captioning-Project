@@ -7,7 +7,7 @@ from __future__ import annotations
 import time
 from typing import List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, UploadFile, status, Query
 
 from api.schemas import (
     BatchPredictItem,
@@ -30,6 +30,8 @@ ALLOWED_CONTENT_TYPES = {
     "image/gif",
 }
 MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+VALID_PROVIDERS = ["auto", "notebook-tensorflow", "huggingface-blip"]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -70,8 +72,48 @@ async def model_info() -> ModelInfoResponse:
     )
 
 
+@router.get("/providers")
+async def list_providers() -> dict:
+    """List available inference providers."""
+    mgr = ModelManager.get_instance()
+    return {
+        "available": VALID_PROVIDERS,
+        "current": mgr.provider_name,
+        "weights_loaded": mgr.weights_loaded,
+    }
+
+
+@router.post("/providers/{provider_name}")
+async def set_provider(provider_name: str) -> dict:
+    """Switch the active inference provider."""
+    if provider_name not in VALID_PROVIDERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid provider: {provider_name}. Valid: {VALID_PROVIDERS}",
+        )
+    
+    mgr = ModelManager.get_instance()
+    
+    # If requesting the same provider, no-op
+    if mgr.provider_name == provider_name:
+        return {"status": "ok", "provider": provider_name, "message": "Already active"}
+    
+    # Re-initialize with the requested provider
+    await mgr.initialize_with_provider(provider_name)
+    
+    return {
+        "status": "ok", 
+        "provider": mgr.provider_name, 
+        "weights_loaded": mgr.weights_loaded,
+        "message": f"Switched to {mgr.provider_name}"
+    }
+
+
 @router.post("/predict", response_model=PredictResponse)
-async def predict(file: UploadFile = File(...)) -> PredictResponse:
+async def predict(
+    file: UploadFile = File(...),
+    provider: str = Query(default="auto", description="Inference provider to use"),
+) -> PredictResponse:
     """Generate a caption for a single uploaded image.
 
     The handler is async for fast file reading, but the heavy ML inference
@@ -98,9 +140,13 @@ async def predict(file: UploadFile = File(...)) -> PredictResponse:
         )
 
     import asyncio
-    import concurrent.futures
 
     mgr = ModelManager.get_instance()
+    
+    # If provider is specified and different from current, switch provider
+    if provider and provider != "auto" and provider != mgr.provider_name:
+        await mgr.initialize_with_provider(provider)
+    
     loop = asyncio.get_running_loop()
     t0 = time.perf_counter()
     # Run CPU-heavy inference in a threadpool so the event loop stays alive.

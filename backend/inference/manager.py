@@ -405,6 +405,76 @@ class ModelManager:
         self.provider_name = self.provider.name
         self.is_ready = True
 
+    async def initialize_with_provider(self, provider_name: str) -> None:
+        """Initialize or switch to a specific provider."""
+        log.info("initializing with provider: %s", provider_name)
+        
+        if provider_name == "notebook-tensorflow":
+            weights_present = (
+                (MODEL_H5.exists() or MODEL_KERAS.exists())
+                and (TOKENIZER_PKL.exists() or TOKENIZER_JSON.exists())
+                and METADATA_JSON.exists()
+            )
+            if not weights_present:
+                log.warning("notebook weights not found — cannot load notebook-tensorflow, falling back to BLIP")
+                await self._load_huggingface()
+                return
+            
+            log.info("loading TensorFlow provider …")
+            nb = NotebookProvider()
+            try:
+                ok = nb.load()
+            except Exception as exc:
+                log.error("NotebookProvider load failed: %s", exc)
+                ok = False
+            if ok and nb.weights_loaded and nb.tokenizer is not None:
+                self.provider = nb
+                self.weights_loaded = True
+                self.provider_name = nb.name
+                self.tf_version = nb.tf_version
+                self.is_ready = True
+                log.info("active provider: %s (weights loaded)", nb.name)
+                return
+            log.warning("notebook provider not usable — falling back to BLIP")
+            await self._load_huggingface()
+            return
+        
+        elif provider_name == "huggingface-blip":
+            await self._load_huggingface()
+            return
+        
+        elif provider_name == "auto":
+            # Auto mode: try notebook first, then BLIP
+            await self.initialize()
+            return
+        
+        else:
+            log.error("Unknown provider: %s — using heuristic fallback", provider_name)
+            self.provider = _HeuristicProvider()
+            self.weights_loaded = False
+            self.provider_name = self.provider.name
+            self.is_ready = True
+
+    async def _load_huggingface(self) -> None:
+        """Load HuggingFace BLIP provider."""
+        log.info("loading HuggingFace BLIP provider …")
+        hf = HuggingFaceProvider()
+        if hf.load():
+            self.provider = hf
+            self.weights_loaded = False
+            self.provider_name = hf.name
+            self.tf_version = hf.tf_version
+            self.is_ready = True
+            log.info("active provider: %s", hf.name)
+            return
+        
+        # Ultimate fallback
+        log.error("BLIP unavailable — using heuristic fallback")
+        self.provider = _HeuristicProvider()
+        self.weights_loaded = False
+        self.provider_name = self.provider.name
+        self.is_ready = True
+
     # -- inference --------------------------------------------------------
     def predict(self, image: Image.Image) -> CaptionResult:
         if self.provider is None:

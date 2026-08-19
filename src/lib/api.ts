@@ -56,15 +56,37 @@ export const apiClient = {
     return res.json();
   },
 
+  async getProviders(baseUrl?: string): Promise<{ available: string[]; current: string; weights_loaded: boolean }> {
+    const res = await fetch(buildUrl("/providers", baseUrl), {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new ApiError(res.status, await safeErr(res));
+    return res.json();
+  },
+
+  async setProvider(provider: string, baseUrl?: string): Promise<{ status: string; provider: string; weights_loaded: boolean; message: string }> {
+    const res = await fetch(buildUrl(`/providers/${provider}`, baseUrl), {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new ApiError(res.status, await safeErr(res));
+    return res.json();
+  },
+
   async predict(
     file: File | Blob,
     filename = "image.jpg",
     baseUrl?: string,
     signal?: AbortSignal,
+    provider?: string,
   ): Promise<PredictResponse> {
     const form = new FormData();
     form.append("file", file, filename);
-    const res = await fetch(buildUrl("/predict", baseUrl), {
+    const url = provider && provider !== "auto" 
+      ? buildUrl(`/predict?provider=${provider}`, baseUrl)
+      : buildUrl("/predict", baseUrl);
+    const res = await fetch(url, {
       method: "POST",
       body: form,
       signal,

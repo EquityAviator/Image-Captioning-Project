@@ -52,6 +52,7 @@ export function useCaption(): UseCaptionReturn {
   const abortRef = useRef<AbortController | null>(null);
 
   const apiBaseUrl = useSettings((s) => s.apiBaseUrl);
+  const inferenceProvider = useSettings((s) => s.inferenceProvider);
   const historyEnabled = useSettings((s) => s.historyEnabled);
   const addHistory = useHistory((s) => s.add);
 
@@ -105,7 +106,7 @@ export function useCaption(): UseCaptionReturn {
           dataUrl = await blobToDataUrl(file);
         }
 
-        const res = await apiClient.predict(file, filename, apiBaseUrl || undefined, ac.signal);
+        const res = await apiClient.predict(file, filename, apiBaseUrl || undefined, ac.signal, inferenceProvider);
         // Clear pending stage timers
         stageTimers.forEach((t) => clearTimeout(t));
         setStage("done");
@@ -141,7 +142,7 @@ export function useCaption(): UseCaptionReturn {
         return null;
       }
     },
-    [apiBaseUrl, historyEnabled, addHistory],
+    [apiBaseUrl, inferenceProvider, historyEnabled, addHistory],
   );
 
   return { isLoading, stage, stageIndex, result, error, predict, reset, abort };

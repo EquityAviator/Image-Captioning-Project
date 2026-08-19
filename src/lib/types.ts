@@ -67,6 +67,8 @@ export interface HistoryEntry {
 
 export type ThemeMode = "dark" | "light" | "system";
 
+export type InferenceProvider = "auto" | "notebook-tensorflow" | "huggingface-blip";
+
 export interface AppSettings {
   theme: ThemeMode;
   animationsEnabled: boolean;
@@ -75,6 +77,7 @@ export interface AppSettings {
   speechSynthesisEnabled: boolean;
   apiBaseUrl: string;
   autoCopyEnabled: boolean;
+  inferenceProvider: InferenceProvider;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -85,6 +88,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   speechSynthesisEnabled: false,
   apiBaseUrl: "",
   autoCopyEnabled: false,
+  inferenceProvider: "auto",
 };
 
 export type ViewKey =

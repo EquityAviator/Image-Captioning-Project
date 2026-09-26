@@ -1,0 +1,15 @@
+{
+  "vocab_size_with_specials": 6000,
+  "train_captions_fit": 34385,
+  "total_sequences_encoded": 40455,
+  "max_bpe_length": 36,
+  "avg_tokens_per_caption": 9.58,
+  "avg_words_per_caption": 9.24,
+  "compression_vs_words": 0.965,
+  "roundtrip_failures": 0,
+  "special_ids": {
+    "PAD": 0,
+    "START": 1,
+    "END": 2
+  }
+}

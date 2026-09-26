@@ -1,0 +1,29 @@
+{
+  "framework": "pytorch",
+  "image_size": 224,
+  "resize_method": "bilinear",
+  "crop_method": "resize_only",
+  "normalization_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "normalization_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "old_preprocessing": "resize224-scale1over255",
+  "new_preprocessing": "resize224-imagenet_norm",
+  "encoder": "DenseNet201",
+  "encoder_weights": "IMAGENET1K_V1",
+  "spatial_feature_shape": [
+    1920,
+    7,
+    7
+  ],
+  "global_feature_dim": 1920,
+  "feature_extraction_batch_size": 32,
+  "total_images": 8091,
+  "device": "cuda"
+}

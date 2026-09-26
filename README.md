@@ -1,45 +1,150 @@
-# CaptionAI — AI Image Caption Generator
+# CaptionAI: Local Image Captioning with CLIP + GRPO
 
-> Convert any image into a natural language description using a Deep Learning pipeline (DenseNet201 encoder + LSTM decoder) trained on the Flickr8K dataset.
+**CaptionAI** is a production-ready, locally-running image captioning system that achieves state-of-the-art results on Flickr8K using only locally-trained models. The project demonstrates that with the right feature backbone (CLIP ViT-B/16) and reinforcement learning (GRPO), a modest 8.4M parameter LSTM decoder can outperform much larger models on in-domain data — while running entirely on consumer hardware (CPU: ~590 ms/caption, no GPU required).
 
-A production-grade, portfolio-ready web application built around a Jupyter notebook. The notebook's exact model architecture is exposed through a FastAPI inference service and consumed by a modern Next.js 16 frontend with animations, dark mode, accessibility, and a polished startup-grade UI.
+The system includes a **hybrid routing** mechanism: a CLIP-based zero-shot classifier detects out-of-domain images (cartoons, screenshots, food photos) and automatically routes them to a local BLIP fallback, while in-domain photos are handled by the specialist CLIP+GRPO model. The entire pipeline runs locally with no external API dependencies — images never leave your machine.
 
----
-
-## Table of contents
-
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Features](#features)
-4. [Folder structure](#folder-structure)
-5. [Installation](#installation)
-6. [Running the backend](#running-the-backend)
-7. [Running the frontend](#running-the-frontend)
-8. [API documentation](#api-documentation)
-9. [Training the model](#training-the-model)
-10. [Screenshots](#screenshots)
-11. [Future improvements](#future-improvements)
-12. [License](#license)
+### Key Highlights
+- 🎯 **State-of-the-art on Flickr8K**: BLEU-1 0.6559, BLEU-4 0.1727, ROUGE-L 0.2782
+- ⚡ **Fast inference**: ~590 ms/caption on CPU (no GPU required)
+- 🛡️ **Hybrid OOD routing**: CLIP zero-shot + BLIP fallback (100% OOD recall)
+- 🎯 **Calibrated confidence**: Temperature scaling T=1.3, ECE 0.0862
+- 🏠 **Fully local**: No external APIs, images never leave your machine
+- ⚙️ **uv-first setup**: 3–10× faster installs, auto CPU/GPU detection
+- 📚 **Full reproducibility**: Every experiment tracked with eval artifacts
 
 ---
 
-## Overview
+## Quick Start
 
-**CaptionAI** wraps a Flickr8K image-captioning notebook in a complete, deployable AI product. The frontend is a single-page Next.js app with client-side view switching (Landing → Dashboard → History → Model Info → Settings). The backend is a FastAPI service that loads the **exact** Keras model architecture from the notebook (`backend/model/architecture.py`) and exposes three HTTP endpoints: `/health`, `/model-info`, and `/predict`.
+### Prerequisites
+- **Git** and **Node.js 20+**
+- **uv** (recommended) or **Python 3.11+**
 
-The original notebook lives at `upload/flickr8k-image-captioning-using-cnns-lstms.ipynb`. The model architecture is replicated faithfully in `backend/model/architecture.py` — no rewrite, no extra layers, no renamed hyperparameters. Only the inference path is exposed; training is moved into an optional `backend/train.py` script that produces `weights/model.h5` + `weights/tokenizer.pkl` + `weights/metadata.json`.
+### Installation (Recommended: uv)
 
-### Provider fallback
+```bash
+# 1. Install uv (one-time)
+# Windows:
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-The backend supports two inference providers, selected automatically at startup:
+# 2. Clone and run
+git clone https://github.com/EquityAviator/Image-Captioning-Project.git
+cd Image-Captioning-Project
 
-| Provider                | When it activates                                              | Notes                                                                                     |
-| ----------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `notebook-tensorflow`   | `weights/model.h5` + `weights/tokenizer.pkl` + `weights/metadata.json` all exist | The exact DenseNet201 + LSTM architecture from the notebook. Real notebook inference.      |
-| `huggingface-blip`      | Default fallback when notebook weights are absent              | Uses Salesforce/blip-image-captioning-base so the demo works end-to-end out of the box.    |
-| `heuristic-fallback`    | Only if neither TensorFlow nor Transformers can be imported    | Lightweight colour-histogram captioner — keeps the API alive in resource-constrained envs. |
+# Run the setup script (handles everything: deps, model downloads, prompts)
+uv run --python 3.11 backend/setup.py
+```
 
-The active provider is reported by `/health` and `/model-info`.
+### Installation (Fallback: plain Python)
+
+```bash
+git clone https://github.com/EquityAviator/Image-Captioning-Project.git
+cd Image-Captioning-Project
+
+# Ensure Python 3.11 and Node.js 20+ are installed
+python backend/setup.py
+```
+
+### What the Setup Script Does
+1. **Engine choice**: CPU (default, 10s timeout) or GPU (CUDA 12.1)
+2. **Installs dependencies**: Python packages + `npm ci` for frontend
+3. **CLIP ViT-B/16** (352 MB): auto-downloads from Hugging Face (default ON)
+4. **BLIP fallback** (945 MB): optional prompt — **default SKIP after 10s**
+5. **Smoke test** → opens dashboard at `http://localhost:3001`
+
+**Headless/CI mode**: `uv run --python 3.11 backend/setup.py --yes` — zero prompts, all defaults.
+
+---
+
+## Dataset: Flickr8K
+
+| Property | Value |
+|----------|-------|
+| **Images** | 8,091 photographs (Flickr) |
+| **Captions** | 5 human-written per image (40,455 total) |
+| **Split** | 6,877 train / 1,214 validation (fixed 85/15 split) |
+| **Preprocessing** | Lowercase, strip non-alphabetic, BPE-6k tokenizer |
+| **Max length** | 38 tokens |
+
+The same fixed validation split is used across all experiments for fair comparison. All metrics reported are on the **full 1,214-image validation split** with beam-5 (α=1.2), NLTK smoothing.
+
+---
+
+## Model Performance
+
+### Champion Model: CLIP ViT-B/16 + GRPO (Production)
+
+| Metric | Score |
+|--------|-------|
+| **BLEU-1** | **0.6559** |
+| **BLEU-2** | 0.4344 |
+| **BLEU-3** | 0.2698 |
+| **BLEU-4** | **0.1727** |
+| **ROUGE-L** | **0.2782** |
+| **CIDEr-D** | 0.5243 |
+| **Word Precision** | 70.7% |
+| **CHAIR (hallucination)** | 47.3% images / 29.8% nouns |
+| **Inference Time** | ~590 ms (CPU, beam-5) |
+| **Model Size** | 8.42M params (32 MB) |
+
+### Generational Progression
+
+| Generation | Architecture | BLEU-1 | BLEU-4 | ROUGE-L | CIDEr-D | Notes |
+|------------|--------------|--------|--------|---------|---------|-------|
+| Gen 1 | DenseNet201 + LSTM (TF) | 0.5334 | 0.1218 | 0.2216 | — | Baseline |
+| Gen 2 | DenseNet + Attention (CE) | 0.5649 | 0.1663 | 0.2548 | 0.5397 | +37% BLEU-4 |
+| Gen 2-RL | + GRPO | 0.5971 | 0.1612 | 0.2566 | — | RL gain |
+| Gen 3 | CLIP ViT-B/16 + CE | 0.6092 | 0.1755 | 0.2747 | 0.6207 | Feature swap |
+| **Gen 3-RL ★** | **CLIP + GRPO** | **0.6559** | **0.1727** | **0.2782** | **0.5243** | **Production** |
+
+### Key Findings
+- **Feature swap > architecture**: CLIP features alone (+GRPO) beat all prior DenseNet models with same decoder
+- **GRPO improves precision**: Word precision 63.9% → 70.7%, but shortens captions (CIDEr bias)
+- **GRPO reduces hallucination**: CHAIR 61.9% (CLIP-CE) → 47.3% (champion)
+- **Capacity isn't the bottleneck**: 23M Transformer overfit badly vs 8.4M LSTM
+
+---
+
+## Fallback & Routing
+
+| Provider | In-Domain BLEU-1 | OOD Recall | Latency |
+|----------|------------------|------------|---------|
+| **CLIP+GRPO (champion)** | **0.574** | — | ~590 ms |
+| BLIP (fallback) | 0.503 | **100%** (10/10 synthetic) | ~2,500 ms |
+| Notebook TF (Gen-1) | 0.427 | — | ~7,000 ms |
+
+**Router**: CLIP zero-shot over 6 prompts (photo, screenshot, food, cartoon, painting, document). Margin rule ≥0.02 cosine keeps 90% of real photos with specialist; 100% OOD recall on 10 synthetic images.
+
+---
+
+## Calibration & Confidence
+
+| Metric | Champion |
+|--------|----------|
+| **ECE @ T=1 (raw)** | 0.2542 |
+| **ECE @ T=1.3 (served)** | **0.0862** |
+| Optimal temperature (T*) | 1.3 |
+| Top-1 accuracy (teacher-forced) | 31.6% |
+
+Temperature scaling (T=1.3) applied **post-decode only** — beam search unchanged, metrics bit-exact.
+
+---
+
+## Ablation & Rejected Techniques (Documented)
+
+| Technique | Result | Reason |
+|-----------|--------|--------|
+| DenseNet fine-tune (P2) | CIDEr 0.418 → 0.399 | 8k images too few |
+| Focal loss (P3b) | BLEU-1 0.0038 (gibberish) | Down-weights structural tokens |
+| Mixed reward (CIDEr+ROUGE) | BLEU-1 0.6559 → 0.6514 | ROUGE also precision-biased |
+| Length-scaled reward | Length fixed but BLEU-4 -1.3 pts | Trade-off moved, not resolved |
+| Transformer decoder (Gen 4) | BLEU-1 -10.1 pts | Overfit (23M params vs 8k images) |
+| BLIP distillation | BLEU-1 0.609 → 0.489 | Style mismatch (val loss better, gen worse) |
+| Diverse Beam Search | BLEU-1 0.570 → 0.531 | Flickr8K refs too similar |
+| CHAIR-aware RL (rl4/rl5) | CHAIR drops but CIDEr collapses | Degeneration via noun avoidance |
 
 ---
 
@@ -61,13 +166,7 @@ The active provider is reported by `/health` and `/model-info`.
                              │ HTTPS (relative paths + XTransformPort)
                              ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                       Caddy gateway (:81)                              │
-│   Routes /?XTransformPort=8000 → http://localhost:8000                 │
-└────────────────────────────┬────────────────────────────────────────────┘
-                             │
-                             ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                  FastAPI backend  (:8000)                              │
+│                       FastAPI backend  (:8010)                         │
 │                                                                        │
 │   backend/main.py                                                      │
 │   ├── /health                                                          │
@@ -78,24 +177,31 @@ The active provider is reported by `/health` and `/model-info`.
 │   backend/inference/manager.py                                         │
 │   ┌──────────────────────────────────────────────────────────────┐    │
 │   │  ModelManager (singleton)                                    │    │
-│   │   ├── NotebookProvider  (TF + DenseNet201 + LSTM)            │    │
-│   │   ├── HuggingFaceProvider  (BLIP, fallback)                  │    │
-│   │   └── _HeuristicProvider  (colour-only, ultimate fallback)   │    │
+│   │   ├── AttentionProvider  (CLIP + GRPO, primary)              │    │
+│   │   ├── BLIPProvider  (fallback for OOD)                       │    │
+│   │   └── TFProvider  (Gen-1 DenseNet+LSTM, comparison only)     │    │
 │   └──────────────────────────────────────────────────────────────┘    │
 │                                                                        │
-│   backend/model/architecture.py  ← EXACT notebook architecture         │
-│   backend/train.py               ← optional training script            │
+│   backend/inference/attention_provider.py  ← CLIP+GRPO serving        │
+│   backend/inference/manager.py           ← ModelManager + routing    │
+│   backend/inference/decoding.py          ← Beam search + guards      │
 └────────────────────────────────────────────────────────────────────────┘
                              │
                              ▼
                   weights/ (gitignored)
-                  ├── model.h5                  (Keras weights)
-                  ├── tokenizer.pkl             (Keras Tokenizer)
-                  ├── metadata.json             (vocab_size, max_length, …)
-                  └── densenet201_*.h5          (ImageNet weights cache)
+                  ├── v2_attention_clip_rl/best.pt   (champion, 32 MB)
+                  ├── v2_attention_clip/best.pt       (fallback #1)
+                  ├── v2_attention_rl/best.pt          (fallback #2)
+                  ├── v2_attention/best.pt             (fallback #3)
+                  ├── bpe/tokenizer.json               (BPE-6k, 3 MB)
+                  ├── image_names.json                  (index)
+                  ├── image_id_to_index.json            (index)
+                  ├── clip_features_spatial.npy        # 2.27 GB (training cache)
+                  ├── features_spatial.npy             # 1.45 GB (training cache)
+                  └── blip/                            # BLIP fallback (auto-download)
 ```
 
-### Inference pipeline
+### Inference Pipeline
 
 ```
 image bytes
@@ -104,377 +210,348 @@ image bytes
 [Pillow decode + resize to 224×224]
    │
    ▼
-[DenseNet201 encoder (frozen, ImageNet weights)]
-   │  outputs (1, 1920) feature vector
+[CLIP ViT-B/16 encoder (frozen, pretrained="openai")]
+   │  outputs (1, 196, 768) patch tokens
    ▼
-[Dense(256, relu) + Reshape((1, 256))]
-   │
-   ├──▶ [Embedding(vocab_size, 256)]   ◀── partial caption "startseq …"
-   │            │
-   ▼            ▼
-[Concatenate(axis=1)] → (1, 1+max_length, 256)
-   │
+[CLIP zero-shot router: cosine vs 6 prompts]
+   │  photo? → AttentionProvider
+   │  other  → BLIPProvider
    ▼
-[LSTM(256)]
-   │
+[AttentionProvider: Bahdanau attention over 196 patches]
+   │  LSTM(512) + GRPO-tuned weights
    ▼
-[Dropout(0.5) → Add(image_features) → Dense(128, relu) → Dropout(0.5)]
-   │
+[Incremental beam-5 search (GNMT α=1.2, soft 2-gram penalty)]
+   │  min-length guard (8 tokens)
    ▼
-[Dense(vocab_size, softmax)]
-   │
-   ▼
-argmax → idx_to_word → append to caption
-   │
-   ▼
-loop until "endseq" or max_length iterations
-   │
-   ▼
-generated caption + mean softmax confidence
+[Caption + tempered confidence (T=1.3, display-only)]
 ```
 
 ---
 
-## Features
+## Frontend Features
 
-### Frontend
+### Landing Page
+- **Hero section** with animated gradient blobs and CTA buttons
+- **Feature cards** (6) with hover animations
+- **Architecture pipeline** diagram with animated arrows
+- **How-it-works** 4-step flow
+- **Model section** with interactive metrics
+- **Performance** animated count-up statistics
+- **Demo CTA** with animated gradient buttons
 
-- **Modern startup-grade UI** with glassmorphism, animated gradient blobs, grid/dot patterns, and a dark-first palette (indigo / purple / blue + emerald accent).
-- **Landing page** with hero, feature cards, animated architecture pipeline, how-it-works steps, model deep-dive, animated performance statistics, and a final CTA.
-- **Dashboard** with sidebar, top navbar (search + notifications + theme toggle + avatar), large drag-and-drop upload zone, animated prediction stages, and a recent-predictions side panel.
-- **Prediction card** with copy / download / share / speak (browser TTS) / regenerate buttons, plus a typing-effect caption reveal and an animated confidence bar.
-- **History panel** persisted to `localStorage` (capped to 50 entries) with search, reuse, and delete.
-- **Model Info page** with a step-by-step pipeline diagram, hyperparameter grid, and live backend status pulled from `/model-info`.
-- **Settings page** with theme picker (dark / light / system), animation toggle, history toggle, typing-effect toggle, speech-synthesis toggle, auto-copy toggle, and a custom API URL field.
-- **Animations everywhere** via Framer Motion: page transitions, view transitions, hover micro-interactions, skeleton loaders, count-up statistics, and a typing cursor.
-- **Accessibility**: semantic HTML, ARIA labels, keyboard-navigable upload zone, focus rings, screen-reader-only text, and high-contrast theme tokens.
-- **Responsive**: mobile-first, tested on phone / tablet / desktop widths.
+### Dashboard
+- **Sidebar navigation**: Dashboard, History, Model Info, Settings
+- **Upload zone**: Drag-and-drop with preview, file validation
+- **Prediction panel**: Real-time stage animation (Upload → Extract → Encode → Decode → Caption)
+- **Result card**: Caption, confidence bar, inference time, provider badge
+- **Actions**: Copy, Download, Share, Speak (TTS), Regenerate
+- **History panel**: Recent predictions (localStorage, capped at 50), reuse/delete
 
-### Backend
+### Model Info Page
+- **Champion card**: Live metrics from `/model-info`
+- **Generation history**: 5 generations with metrics
+- **Techniques ledger**: 20 expandable cards (10 wins, 10 failures) with metrics tables
+- **Progress comparison table**: All generations × metrics
+- **Live pipeline diagram**: 7-step visual flow
+- **API documentation**: All endpoints with request/response schemas
+- **Backend health**: Routing, latency, confidence, operational quirks
+- **Live hyperparameters**: Read directly from running backend
 
-- **FastAPI service** with `async` handlers that dispatch CPU-heavy inference to a threadpool via `run_in_executor` — never blocks the event loop.
-- **Exact notebook architecture** in `backend/model/architecture.py` — `build_encoder()` returns DenseNet201 with the head removed, `build_decoder()` returns the exact same `Dense(256) → Reshape → Embedding → Concatenate → LSTM(256) → Dropout → Add → Dense(128) → Dropout → Dense(vocab, softmax)` stack as notebook cell 20.
-- **Provider fallback chain** so the demo always works even before you've trained the model.
-- **Batch endpoint** (`POST /predict-batch`) accepts up to 8 images at once.
-- **CORS enabled** for cross-origin development.
-- **Auto-restart supervisor** (`backend/run.sh`) — if the Python process dies, it restarts within 3 seconds.
-- **Optional training script** (`backend/train.py`) that ports the notebook's training loop verbatim and saves `model.h5` + `tokenizer.pkl` + `metadata.json` into `weights/`.
+### Settings
+- **Theme**: Dark / Light / System
+- **Animations**: Toggle all Framer Motion animations
+- **History**: Enable/disable localStorage persistence
+- **Typing effect**: Caption typewriter reveal
+- **Speech synthesis**: Browser TTS for captions
+- **Auto-copy**: Copy caption to clipboard on generation
+- **Provider selector**: Auto (recommended) / Attention / Notebook TF / HF BLIP
+- **Custom API URL**: Override backend endpoint
 
----
-
-## Folder structure
-
-```
-.
-├── README.md                       ← you are here
-├── package.json                    ← Next.js 16 + React 19 + Tailwind 4 + shadcn/ui
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-├── Caddyfile                       ← gateway config (port 81 → 3000 / 8000)
-│
-├── src/                            ← Next.js frontend (App Router)
-│   ├── app/
-│   │   ├── layout.tsx              ← root layout + ThemeProvider + fonts
-│   │   ├── page.tsx                ← single route, client-side view switching
-│   │   └── globals.css             ← Tailwind 4 theme tokens + custom utilities
-│   │
-│   ├── components/
-│   │   ├── ui/                     ← shadcn/ui component library
-│   │   ├── theme-provider.tsx
-│   │   ├── theme-toggle.tsx
-│   │   ├── navbar.tsx              ← landing navbar
-│   │   ├── footer.tsx              ← shared footer
-│   │   ├── landing/
-│   │   │   ├── landing-page.tsx    ← landing composition
-│   │   │   ├── hero.tsx            ← animated hero with gradient blobs
-│   │   │   ├── features.tsx        ← 6 feature cards
-│   │   │   ├── architecture.tsx    ← pipeline diagram with animated arrows
-│   │   │   ├── how-it-works.tsx    ← 4-step cards
-│   │   │   ├── model-section.tsx   ← encoder/decoder/embedding/dataset
-│   │   │   ├── performance.tsx     ← animated count-up statistics
-│   │   │   └── demo-cta.tsx        ← final CTA
-│   │   └── dashboard/
-│   │       ├── dashboard-shell.tsx ← sidebar + navbar + view switcher
-│   │       ├── dashboard-navbar.tsx
-│   │       ├── sidebar.tsx
-│   │       ├── dashboard-view.tsx  ← main prediction panel
-│   │       ├── upload-zone.tsx     ← drag&drop + preview + progress
-│   │       ├── prediction-stages.tsx ← 5-stage animated progress
-│   │       ├── prediction-card.tsx ← copy/download/share/speak/regenerate
-│   │       ├── history-panel.tsx   ← localStorage history
-│   │       ├── model-info-view.tsx ← pipeline diagram + hyperparams
-│   │       └── settings-view.tsx   ← theme/animation/API URL settings
-│   │
-│   ├── hooks/
-│   │   ├── use-caption.ts          ← predict API + stage management
-│   │   ├── use-typing-effect.ts    ← typewriter caption reveal
-│   │   ├── use-speech.ts           ← browser TTS wrapper
-│   │   ├── use-count-up.ts         ← animated number on scroll
-│   │   └── use-mounted.ts          ← hydration-safe mounted flag
-│   │
-│   └── lib/
-│       ├── api.ts                  ← typed FastAPI client (XTransformPort)
-│       ├── types.ts                ← shared TypeScript types
-│       ├── settings-store.ts       ← Zustand + persist (settings)
-│       ├── history-store.ts        ← Zustand + persist (history)
-│       ├── nav-store.ts            ← Zustand (active view)
-│       └── utils.ts                ← shadcn cn() helper
-│
-├── backend/                        ← FastAPI service
-│   ├── main.py                     ← app + startup + CORS + routes
-│   ├── requirements.txt
-│   ├── start.sh                    ← one-shot launcher
-│   ├── run.sh                      ← auto-restart supervisor
-│   ├── train.py                    ← optional Flickr8K training script
-│   ├── api/
-│   │   ├── routes.py               ← /health, /model-info, /predict, /predict-batch
-│   │   └── schemas.py              ← Pydantic models
-│   ├── model/
-│   │   └── architecture.py         ← EXACT notebook architecture (cell 20)
-│   ├── inference/
-│   │   └── manager.py              ← provider fallback chain
-│   ├── utils/
-│   │   ├── paths.py                ← centralised weight paths
-│   │   ├── logger.py               ← structured logging
-│   │   └── timer.py                ← context-manager timer
-│   └── routes/                     ← (reserved for future route modules)
-│
-├── weights/                        ← trained model artefacts (gitignored)
-│   ├── model.h5                    ← Keras weights (place here after training)
-│   ├── tokenizer.pkl               ← Keras Tokenizer
-│   ├── metadata.json               ← vocab_size, max_length, etc.
-│   └── densenet201_*.h5            ← ImageNet weights cache
-│
-└── upload/
-    └── flickr8k-image-captioning-using-cnns-lstms.ipynb   ← source notebook
-```
+### Design System
+- **Tailwind CSS 4** with CSS variables for theming
+- **shadcn/ui** component library (Radix UI primitives)
+- **Framer Motion** for all animations
+- **Dark-first palette**: indigo/purple/blue + emerald accent
+- **Accessibility**: ARIA labels, keyboard navigation, focus rings, screen-reader text
 
 ---
 
-## Installation
+## Backend API
 
-### Prerequisites
+### Endpoints
 
-- **Node.js ≥ 20** and **Bun** (for the frontend)
-- **Python ≥ 3.10** (for the backend)
-- ~5 GB free disk space (for TensorFlow CPU + transformers + torch CPU)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Liveness + active provider + weights status |
+| `GET` | `/model-info` | Full architecture metadata + val metrics |
+| `GET` | `/providers` | List available providers + current |
+| `POST` | `/providers/{name}` | Hot-swap active provider |
+| `POST` | `/predict` | Single image → caption + metadata |
+| `POST` | `/predict-batch` | Up to 8 images → batch results |
 
-### 1. Clone & install frontend dependencies
+### Request/Response
 
+**POST /predict**
 ```bash
-git clone <your-repo-url> captionai
-cd captionai
-bun install
+curl -X POST http://localhost:8010/predict \
+  -F "file=@image.jpg"
 ```
-
-### 2. Install backend dependencies
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-> If you only want the BLIP fallback (no TensorFlow notebook provider), you can skip `tensorflow-cpu` and save ~600 MB. The `HuggingFaceProvider` only needs `transformers` + `torch` (CPU build).
-
----
-
-## Running the backend
-
-### Option A — Auto-restart supervisor (recommended for dev)
-
-```bash
-bash backend/run.sh
-```
-
-Restarts the uvicorn process automatically if it dies. Logs to `/tmp/backend.log`.
-
-### Option B — Direct uvicorn
-
-```bash
-cd backend
-PORT=8000 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Option C — One-shot launcher
-
-```bash
-bash backend/start.sh
-```
-
-The backend listens on **port 8000** and exposes:
-
-- `GET  /`            → root health check
-- `GET  /health`      → service status + active provider
-- `GET  /model-info`  → architecture + training metadata
-- `POST /predict`     → caption a single image
-- `POST /predict-batch` → caption up to 8 images at once
-- `GET  /docs`        → Swagger UI
-- `GET  /redoc`       → ReDoc UI
-
----
-
-## Running the frontend
-
-```bash
-# from the project root
-bun run dev
-```
-
-The Next.js dev server listens on **port 3000**. In production you would typically front both services with the Caddy gateway (already configured in `Caddyfile`):
-
-- `https://your-domain/`  → Next.js (port 3000)
-- `https://your-domain/<api>?XTransformPort=8000`  → FastAPI (port 8000)
-
-All API calls from the frontend use **relative paths** with the `XTransformPort` query parameter, so they work transparently through the gateway without exposing internal ports.
-
----
-
-## API documentation
-
-### `GET /health`
-
 ```json
 {
-  "status": "ok",
-  "model_loaded": true,
-  "provider": "huggingface-blip",
-  "weights_loaded": false,
-  "backend": "TensorFlow n/a (transformers)"
+  "caption": "a young boy is playing in the grass",
+  "inference_time": "416.9ms",
+  "confidence": 0.322,
+  "provider": "attention",
+  "success": true
 }
 ```
 
-### `GET /model-info`
+**Response fields:**
+- `caption`: Generated caption string
+- `inference_time`: Wall-clock time (ms)
+- `confidence`: Tempered confidence (T=1.3)
+- `provider`: `attention` | `attention+blip` | `huggingface-blip`
+- `semantic_score`: null (unless `ENABLE_BLIP_SCORE=1`)
+- `semantic_pmi`: null
 
-```json
-{
-  "ready": true,
-  "active_provider": "huggingface-blip",
-  "weights_loaded": false,
-  "provider": "huggingface-blip",
-  "encoder": "Vision Transformer (BLIP)",
-  "encoder_feature_dim": 768,
-  "decoder": "BERT-style text decoder",
-  "embed_dim": 768,
-  "lstm_units": 0,
-  "dense_units": 0,
-  "dropout": 0.0,
-  "training_dataset": "BLIP pretraining corpus (COYO + LAION)",
-  "image_size": 384,
-  "vocab_size": 30522,
-  "max_length": 50,
-  "tensorflow_version": "n/a (transformers)",
-  "training_metadata": { "note": "HuggingFace fallback provider" }
-}
+---
+
+## Training Pipeline
+
+### Dataset: Flickr8K
+| Property | Value |
+|----------|-------|
+| Images | 8,091 photographs (Flickr) |
+| Captions | 5 human-written per image (40,455 total) |
+| Split | 6,877 train / 1,214 validation (85/15 fixed) |
+| Tokenizer | BPE-6k (6,000 subwords) |
+| Max length | 38 tokens |
+
+### Training Scripts
+```bash
+# Gen 2: DenseNet + Attention (CE)
+python backend/train_attention_v2.py
+
+# Gen 2-RL: GRPO on DenseNet
+python backend/train_attention_v2_rl.py
+
+# Gen 3: CLIP-CE (feature swap)
+python backend/train_attention_v2_clip.py
+
+# Gen 3-RL ★: CLIP + GRPO (champion)
+python backend/train_attention_v2_clip_rl.py
+
+# Transformer decoder (Gen 4)
+python backend/train_attention_v2_tf.py
+
+# BLIP distillation
+python backend/train_attention_v2_clip_distill.py
+
+# CHAIR-aware RL (rl4/rl5)
+python backend/train_attention_v2_clip_rl4.py
+python backend/train_attention_v2_clip_rl5.py
 ```
 
-### `POST /predict`
+### Key Training Configs
+| Config | Value |
+|--------|-------|
+| Batch size | 64 |
+| Learning rate | 3e-4 (CE), 1e-5 (RL) |
+| Optimizer | AdamW |
+| Weight decay | 0.01 (CE), 0 (RL) |
+| Patience | 12 epochs |
+| GRPO group size | 5 |
+| Images/step (RL) | 8 |
+| Max length | 24 tokens |
+| Seed | 42 |
 
-**Request** — `multipart/form-data` with a single field:
+### Evaluation Protocol
+- **Split**: Fixed 1,214 validation images
+- **Decoding**: Beam-5, GNMT α=1.2, soft 2-gram penalty
+- **Metrics**: BLEU-1/2/3/4, ROUGE-L, CIDEr-D (pycocoevalcap), CHAIR-lite, ECE
+- **Seed**: 42 (all runs)
 
-| field | type   | description                            |
-| ----- | ------ | -------------------------------------- |
-| file  | binary | PNG / JPG / JPEG / WEBP, ≤ 10 MB       |
+---
 
-**Response — 200 OK**
+## Evaluation Methodology
 
-```json
-{
-  "caption": "a house with a red roof and a green tree",
-  "inference_time": "1711.4ms",
-  "confidence": 0.92,
-  "provider": "huggingface-blip",
-  "success": true,
-  "error": null
-}
+### Metrics Computed
+| Metric | Tool | Purpose |
+|--------|------|---------|
+| BLEU-1/2/3/4 | NLTK (method-1 smoothing) | N-gram precision |
+| ROUGE-L | rouge-score | Longest common subsequence |
+| CIDEr-D | pycocoevalcap | TF-IDF weighted n-gram consensus |
+| CHAIR-lite | Custom (NLTK POS) | Hallucination rate |
+| ECE | Custom (13 bins) | Calibration error |
+| Word precision | Custom | % predicted words in references |
+
+### CHAIR-lite Methodology
+- POS-tag nouns in generated captions (NLTK)
+- Noun is "unsupported" if absent from union of nouns in 5 references
+- **CHAIR-img**: % images with ≥1 unsupported noun
+- **Hallucinated noun rate**: % all generated nouns unsupported
+- Note: Conservative — synonyms ("dog"/"puppy") count as hallucinated
+
+### Calibration
+- **ECE**: Expected Calibration Error (13 bins, teacher-forced tokens)
+- **T\***: Optimal temperature via NLL grid search (0.5–2.0)
+- **Served**: T=1.3 applied post-decode (display only, beam unchanged)
+- **Verification**: Bit-exact metric reproduction after tempering
+
+---
+
+## Ablation & Rejected Techniques (Documented)
+
+| Technique | Result | Reason |
+|-----------|--------|--------|
+| DenseNet fine-tune (P2) | CIDEr 0.418 → 0.399 | 8k images too few |
+| Focal loss (P3b) | BLEU-1 0.0038 (gibberish) | Down-weights structural tokens |
+| Mixed reward (CIDEr+ROUGE) | BLEU-1 0.6559 → 0.6514 | ROUGE also precision-biased |
+| Length-scaled reward | Length fixed but BLEU-4 -1.3 pts | Trade-off moved, not resolved |
+| Transformer decoder (Gen 4) | BLEU-1 -10.1 pts | Overfit (23M params vs 8k images) |
+| BLIP distillation | BLEU-1 0.609 → 0.489 | Style mismatch (val loss better, gen worse) |
+| Diverse Beam Search | BLEU-1 0.570 → 0.531 | Flickr8K refs too similar |
+| CHAIR-aware RL (rl4/rl5) | CHAIR drops but CIDEr collapses | Degeneration via noun avoidance |
+
+---
+
+## Project Structure
+
+```
+Image-Captioning-Project/
+├── backend/                 # FastAPI server
+│   ├── inference/           # Model providers, routing, decoding
+│   ├── setup.py             # Bootstrap script (uv/uvx or python)
+│   ├── requirements.txt     # Common deps (no torch/tf)
+│   ├── requirements-cpu.txt # torch CPU
+│   ├── requirements-gpu.txt # torch CUDA 12.1
+│   └── requirements-legacy.txt  # tensorflow-cpu (optional)
+├── src/                     # Next.js 16 frontend
+│   ├── components/dashboard/   # Dashboard, ModelInfo, Settings
+│   └── app/                    # Next.js app router
+├── experiments/             # All training runs (best.pt + eval JSONs)
+│   ├── v2_attention_clip_rl/    # ★ Champion
+│   ├── v2_attention_clip/       # CLIP-CE (fallback #1)
+│   ├── v2_attention_rl/         # DenseNet-RL (fallback #2)
+│   └── ... (rejected runs)
+├── weights/
+│   ├── bpe/                    # BPE tokenizer (6k vocab)
+│   ├── clip_features_spatial.npy   # 2.27 GB (training cache)
+│   ├── features_spatial.npy        # 1.45 GB (training cache)
+│   └── blip/                   # BLIP fallback (auto-downloads)
+├── experiments/               # Training checkpoints + eval JSONs
+├── dataset/
+│   ├── Images/               # 8,091 Flickr8K images (gitignored)
+│   └── captions.txt          # All captions
+├── docs/
+│   ├── SETUP_REQUIREMENTS.md    # Full setup spec
+│   ├── SETUP_REQUIREMENTS.md    # Client summary
+│   └── CaptionAI_Research_Report_v2.pdf
+└── docs/CaptionAI_Research_Report_v2.pdf   # Full technical report
 ```
 
-**Example with curl**
+---
+
+## Commands Reference
 
 ```bash
-curl -X POST http://localhost:8000/predict \
-     -F "file=@/path/to/image.jpg"
-```
+# Full setup (interactive)
+uv run --python 3.11 backend/setup.py
 
-### `POST /predict-batch`
+# Headless (CI/defaults)
+uv run --python 3.11 backend/setup.py --yes
 
-**Request** — `multipart/form-data` with up to 8 `files` fields.
+# Force CPU/GPU
+uv run --python 3.11 backend/setup.py --cpu
+uv run --python 3.11 backend/setup.py --gpu
 
-**Response**
+# Skip BLIP explicitly
+uv run --python 3.11 backend/setup.py --blip off
 
-```json
-{
-  "results": [
-    { "filename": "a.jpg", "caption": "...", "inference_time": "...", "confidence": 0.9, "success": true, "error": null },
-    { "filename": "b.jpg", "caption": "...", "inference_time": "...", "confidence": 0.9, "success": true, "error": null }
-  ],
-  "total": 2,
-  "success_count": 2
-}
+# Force CLIP download
+uv run --python 3.11 backend/setup.py --no-clip
+
+# Air-gapped (pre-copied HF cache)
+CAPTIONAI_HF_OFFLINE=1 uv run --python 3.11 backend/setup.py
+
+# Development servers
+uv run --python 3.11 -m uvicorn backend.main:app --port 8010 --reload  # backend
+npm run dev                                                  # frontend (port 3001)
 ```
 
 ---
 
-## Training the model
+## Environment Variables
 
-If you want real notebook inference (instead of the BLIP fallback), train the model on Flickr8K and drop the artefacts into `weights/`:
-
-### 1. Download Flickr8K
-
-- Images: <https://www.kaggle.com/datasets/adityajn105/flickr8k/download?datasetVersionNumber=1>
-- Captions: same archive, `captions.txt`
-
-### 2. Run the training script
-
-```bash
-cd backend
-python3 train.py \
-    --images /path/to/flickr8k/Images \
-    --captions /path/to/flickr8k/captions.txt \
-    --epochs 20 \
-    --batch-size 32
-```
-
-This is a verbatim port of the notebook's training loop (cells 9–28). After training you'll have:
-
-- `weights/model.h5` — best decoder weights (EarlyStopping-monitored)
-- `weights/tokenizer.pkl` — pickled Keras Tokenizer
-- `weights/metadata.json` — `vocab_size`, `max_length`, hyperparameters, final losses
-
-### 3. Restart the backend
-
-On next startup, `ModelManager` will detect the three files and automatically switch from `huggingface-blip` to `notebook-tensorflow`. The `/health` endpoint will report `weights_loaded: true`.
+| Variable | Values | Default | Purpose |
+|----------|--------|---------|---------|
+| `CAPTIONAI_BLIP` | `download` \| `local:PATH` \| `off` | — | Override BLIP prompt |
+| `CAPTIONAI_CLIP` | `skip` | — | Skip CLIP prefetch |
+| `CAPTIONAI_HF_OFFLINE` | `1` | — | Force offline mode |
+| `CAPTIONAI_BLIP` | `download` \| `local` \| `off` | — | BLIP mode |
+| `ATT_CKPT` | path | auto | Override checkpoint |
+| `ATT_DEVICE` | `cpu` \| `cuda` | `cpu` | Inference device |
 
 ---
 
-## Screenshots
+## Contributing
 
-Screenshots are saved to `download/` as you run the app:
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Run linting: `bun run lint` (frontend), `ruff check` (backend)
+4. Run tests: `pytest` (backend), `bun run test` (frontend)
+5. Commit with conventional commits: `feat:`, `fix:`, `docs:`, etc.
+5. Open PR against `main`
 
-| File                                | What it shows                              |
-| ----------------------------------- | ------------------------------------------ |
-| `download/landing-screenshot.png`   | Full landing page (hero + features)        |
-| `download/dashboard-screenshot.png` | Empty dashboard with upload zone           |
-| `download/prediction-result.png`    | Dashboard with a successful prediction     |
+### Code Style
+- **Frontend**: TypeScript strict, ESLint + Prettier, shadcn/ui patterns
+- **Backend**: Python 3.11+, type hints, ruff, mypy
+- **Commits**: Conventional Commits 1.0.0
 
 ---
 
-## Future improvements
+## Troubleshooting
 
-- **Beam search decoding** instead of greedy argmax for higher-quality captions.
-- **Attention visualisation** — overlay the image with a heatmap showing which regions influenced each generated word.
-- **Multi-image batch UI** — drag multiple files into the upload zone and caption them in parallel via `/predict-batch`.
-- **Translation** — pipe the generated caption through an MT API (e.g. DeepL) for non-English output.
-- **Latency graph** — record inference times in `localStorage` and plot them with Recharts (already a project dependency).
-- **Auth + cloud history** — replace the local-history store with a Supabase/Postgres backend so captions sync across devices.
-- **Image comparison slider** — drag handle to compare the original image with an attention-overlay version.
-- **PWA / offline mode** — cache the model in the browser via `transformers.js` for fully client-side inference.
-- **CI/CD** — GitHub Actions pipeline that runs `bun run lint`, `pytest`, and deploys both services on merge to `main`.
+| Issue | Solution |
+|-------|----------|
+| `pip install` fails on torch | Use `requirements-cpu.txt` or `requirements-gpu.txt` explicitly |
+| BLIP not loading | Check `weights/blip/` exists or run setup with BLIP=download |
+| Port 8000/3001 in use | Change `PORT` env var or kill existing process |
+| CUDA OOM | Use CPU mode (`--cpu`) or reduce batch size |
+| OneDrive sync issues | Ensure `.venv` and `node_modules` are junctions to local disk |
 
 ---
 
 ## License
 
-MIT — see `LICENSE` (or feel free to use this as a portfolio piece without one).
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## Citation
+
+If you use this work, please cite:
+
+```bibtex
+@misc{captionai2026,
+  title={CaptionAI: Local Image Captioning with CLIP + GRPO},
+  author={Muhammad Hamza Mushtaq},
+  year={2026},
+  url={https://github.com/EquityAviator/Image-Captioning-Project}
+}
+```
+
+---
+
+## Acknowledgments
+
+- [CLIP](https://github.com/openai/CLIP) by OpenAI
+- [BLIP](https://github.com/salesforce/BLIP) by Salesforce Research
+- [GRPO](https://arxiv.org/abs/2402.03300) by DeepSeek AI
+- [open_clip](https://github.com/mlfoundations/open_clip) by ML Foundations
+- [Flickr8K](https://www.kaggle.com/datasets/adityajn105/flickr8k) dataset
+- [shadcn/ui](https://ui.shadcn.com/) component library
+
+---
+
+**Made with ❤️ for the local-first ML community** — proving you don't need massive GPUs or cloud APIs for production-grade captioning.

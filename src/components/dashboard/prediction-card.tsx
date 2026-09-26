@@ -128,7 +128,15 @@ Image: ${imageUrl || "(none)"}
           variant="outline"
           className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
         >
-          {result.provider === "huggingface-blip" ? "BLIP" : "Notebook"}
+          {result.provider === "attention+blip"
+            ? "CLIP+GRPO → BLIP (auto-routed)"
+            : result.provider === "attention"
+            ? "CLIP + GRPO"
+            : result.provider === "huggingface-blip"
+            ? "BLIP"
+            : result.provider === "notebook-tensorflow"
+            ? "Notebook TF"
+            : result.provider}
         </Badge>
       </div>
 
@@ -150,7 +158,10 @@ Image: ${imageUrl || "(none)"}
             {result.inference_time}
           </p>
         </div>
-        <div className="rounded-xl border border-border/40 bg-card/40 p-3">
+        <div
+          className="rounded-xl border border-border/40 bg-card/40 p-3"
+          title="Mean softmax probability of the words the decoder chose. Calibrated on the validation split: when the model displays X%, its next-word choice is empirically correct about X% of the time at that confidence level (ECE = 1.3%). It is a self-consistency signal, not caption accuracy."
+        >
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <TrendingUp className="h-3 w-3" />
             Confidence
@@ -167,6 +178,36 @@ Image: ${imageUrl || "(none)"}
             </div>
           </div>
         </div>
+        {typeof result.semantic_score === "number" && (
+          <div
+            className="col-span-2 rounded-xl border border-border/40 bg-card/40 p-3"
+            title="Independent semantic check: an external vision-language model (BLIP) measures how strongly THIS image supports the caption, after cancelling out the reward for generic phrasing (PMI). High = the picture itself provides evidence for these words."
+          >
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Sparkles className="h-3 w-3" />
+              Semantic match
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="font-mono text-sm font-semibold">
+                {Math.round(result.semantic_score * 100)}%
+              </p>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round(result.semantic_score * 100)}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.35 }}
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                />
+              </div>
+              {typeof result.semantic_pmi === "number" && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  PMI {result.semantic_pmi >= 0 ? "+" : ""}
+                  {result.semantic_pmi.toFixed(2)}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

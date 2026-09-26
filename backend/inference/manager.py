@@ -22,11 +22,16 @@ import os
 import pickle
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 from PIL import Image
 
+from inference.attention_provider import AttentionProvider
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+from inference.decoding import beam_search_decode, greedy_decode
 from model.architecture import (
     DEFAULT_IMG_SIZE,
     build_decoder,
@@ -55,6 +60,8 @@ class CaptionResult:
     provider: str
     success: bool = True
     error: Optional[str] = None
+    semantic_score: Optional[float] = None
+    semantic_pmi: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +103,8 @@ class NotebookProvider(_BaseProvider):
         self.max_length: int = 0
         self.weights_loaded: bool = False
         self.metadata_dict: dict = {}
+        self.beam_width: int = int(os.environ.get("BEAM_WIDTH", "10"))
+        self.length_penalty: float = float(os.environ.get("LENGTH_PENALTY", "1.2"))
 
     # -- loading ----------------------------------------------------------
     def load(self) -> bool:
@@ -206,25 +215,31 @@ class NotebookProvider(_BaseProvider):
         return feat
 
     def _generate_caption(self, feature: np.ndarray) -> tuple[str, float]:
-        from tensorflow.keras.preprocessing.sequence import pad_sequences
+        """Decode a caption from an image feature vector.
 
-        in_text = "startseq"
-        confidences: list[float] = []
-        for _ in range(self.max_length):
-            seq = self.tokenizer.texts_to_sequences([in_text])[0]
-            seq = pad_sequences([seq], maxlen=self.max_length, padding="post")
-            y_pred = self.decoder.predict([feature, seq], verbose=0, batch_size=1)[0]
-            idx = int(np.argmax(y_pred))
-            confidences.append(float(y_pred[idx]))
-            word = self._idx_to_word(idx)
-            if word is None:
-                break
-            in_text += " " + word
-            if word == "endseq":
-                break
-        caption = in_text.replace("startseq", "").replace("endseq", "").strip()
-        confidence = float(np.mean(confidences)) if confidences else 0.0
-        return caption, confidence
+        Uses beam search by default (suppresses repetitive "man man man"
+        degeneration), falling back to greedy if beam search errors.
+        """
+        if self.beam_width and self.beam_width > 1:
+            try:
+                return beam_search_decode(
+                    self._predict_probs,
+                    feature,
+                    self.tokenizer,
+                    self.max_length,
+                    beam_width=self.beam_width,
+                    length_penalty=self.length_penalty,
+                )
+            except Exception as exc:
+                log.warning("beam search failed (%s) — using greedy", exc)
+        return greedy_decode(
+            self._predict_probs, feature, self.tokenizer, self.max_length
+        )
+
+    def _predict_probs(self, feature: np.ndarray, seqs: np.ndarray) -> np.ndarray:
+        """Predict next-token probabilities for a batch of padded sequences."""
+        probs = self.decoder.predict([feature, seqs], verbose=0, batch_size=1)
+        return np.asarray(probs, dtype="float64")
 
     def _idx_to_word(self, idx: int) -> Optional[str]:
         for word, index in self.tokenizer.word_index.items():
@@ -249,6 +264,8 @@ class NotebookProvider(_BaseProvider):
             "training_dataset": "Flickr8K",
             "image_size": DEFAULT_IMG_SIZE,
             "tensorflow_version": self.tf_version,
+            "decoding": (f"beam search (beam={self.beam_width}, "
+                         f"length_penalty={self.length_penalty})"),
             "training_metadata": self.metadata_dict,
         }
 
@@ -275,17 +292,19 @@ class HuggingFaceProvider(_BaseProvider):
     def load(self) -> bool:
         try:
             from transformers import BlipForConditionalGeneration, BlipProcessor
-            log.info("loading BLIP image-captioning model …")
-            self._processor = BlipProcessor.from_pretrained(
-                "Salesforce/blip-image-captioning-base"
-            )
-            self._model = BlipForConditionalGeneration.from_pretrained(
-                "Salesforce/blip-image-captioning-base"
-            )
+            # Absolute path to project_root/weights/blip
+            base = Path(__file__).resolve().parents[2]
+            local_path = base / "weights" / "blip"
+            log.info("loading BLIP image-captioning model from %s …", local_path)
+            if not local_path.exists():
+                log.error("BLIP weights directory not found at %s", local_path)
+                return False
+            self._processor = BlipProcessor.from_pretrained(str(local_path))
+            self._model = BlipForConditionalGeneration.from_pretrained(str(local_path))
             log.info("BLIP loaded ✓")
             return True
         except Exception as exc:
-            log.error("BLIP load failed: %s", exc)
+            log.error("BLIP load failed: %s", exc, exc_info=True)
             return False
 
     def predict(self, image: Image.Image) -> CaptionResult:
@@ -357,6 +376,30 @@ class ModelManager:
 
     # -- lifecycle --------------------------------------------------------
     async def initialize(self) -> None:
+        # 0. attention-v2 (Tier-2 retrained model) — preferred when its
+        #    checkpoint + BPE tokenizer are on disk. Best val metrics in the
+        #    project (BLEU-4 0.1663 vs 0.1253 baseline) and pure-PyTorch
+        #    serving (no TF dependency on the hot path).
+        att_ckpt = BACKEND_DIR.parent / "experiments" / "v2_attention" / "best.pt"
+        if (att_ckpt.exists()
+                and os.environ.get("PREFER_ATTENTION_V2", "1") != "0"):
+            log.info("attention-v2 checkpoint found — loading attention provider …")
+            att = AttentionProvider()
+            try:
+                ok = att.load()
+            except Exception as exc:  # noqa: BLE001
+                log.error("AttentionProvider load failed: %s", exc)
+                ok = False
+            if ok:
+                self.provider = att
+                self.weights_loaded = True
+                self.provider_name = att.name
+                self.tf_version = att.tf_version
+                self.is_ready = True
+                log.info("active provider: %s (v2, weights loaded)", att.name)
+                return
+            log.warning("attention-v2 provider not usable — falling back")
+
         # 1. Only spend the cycles to load TensorFlow + DenseNet201 if the
         #    notebook's weights, tokenizer, and metadata are actually on
         #    disk. Otherwise go straight to the BLIP fallback — this keeps
@@ -442,7 +485,11 @@ class ModelManager:
         elif provider_name == "huggingface-blip":
             await self._load_huggingface()
             return
-        
+
+        elif provider_name == "attention":
+            await self._load_attention()
+            return
+
         elif provider_name == "auto":
             # Auto mode: try notebook first, then BLIP
             await self.initialize()
@@ -474,6 +521,21 @@ class ModelManager:
         self.weights_loaded = False
         self.provider_name = self.provider.name
         self.is_ready = True
+
+    async def _load_attention(self) -> None:
+        """Load the PyTorch attention decoder (Bahdanau) provider."""
+        log.info("loading attention provider …")
+        att = AttentionProvider()
+        if att.load():
+            self.provider = att
+            self.weights_loaded = att.weights_loaded
+            self.provider_name = att.name
+            self.tf_version = att.tf_version
+            self.is_ready = True
+            log.info("active provider: %s (weights loaded)", att.name)
+            return
+        log.warning("attention provider not usable — falling back to BLIP")
+        await self._load_huggingface()
 
     # -- inference --------------------------------------------------------
     def predict(self, image: Image.Image) -> CaptionResult:

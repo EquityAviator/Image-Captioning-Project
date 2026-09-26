@@ -1,0 +1,105 @@
+{
+  "checkpoint": "C:\\Users\\mh562\\OneDrive\\Documents\\Image caption\\Image-Captioning-Project\\experiments\\v2_attention_clip_rl\\best.pt",
+  "decode": {
+    "beam": 5,
+    "alpha": 1.2,
+    "dbs": "OFF (standard beam)",
+    "min_len_guard": "OFF (matches champion eval protocol)"
+  },
+  "metrics": {
+    "bleu1": 0.6559,
+    "bleu2": 0.4344,
+    "bleu3": 0.2698,
+    "bleu4": 0.1727,
+    "rouge_l": 0.2782,
+    "cider_d": 0.5243
+  },
+  "chair_lite": {
+    "chair_image_rate": 0.4728,
+    "hallucinated_noun_rate": 0.2984,
+    "note": "CHAIR-lite: generated nouns missing from the image's reference-caption noun set"
+  },
+  "calibration": {
+    "top1_accuracy": 0.3164,
+    "mean_max_prob": 0.5706,
+    "ece_at_T1": 0.2542,
+    "temperature_grid_nll": {
+      "0.6": 5.8065,
+      "0.8": 4.5914,
+      "0.9": 4.2256,
+      "1.0": 3.9636,
+      "1.1": 3.7834,
+      "1.3": 3.6168,
+      "1.6": 3.7242
+    },
+    "T_star": 1.3,
+    "reliability_bins": [
+      {
+        "bin": "(0.0,0.1]",
+        "n": 28,
+        "avg_conf": 0.0833,
+        "acc": 0.0
+      },
+      {
+        "bin": "(0.1,0.2]",
+        "n": 630,
+        "avg_conf": 0.1641,
+        "acc": 0.0698
+      },
+      {
+        "bin": "(0.2,0.3]",
+        "n": 1538,
+        "avg_conf": 0.2533,
+        "acc": 0.1138
+      },
+      {
+        "bin": "(0.3,0.4]",
+        "n": 1907,
+        "avg_conf": 0.35,
+        "acc": 0.1589
+      },
+      {
+        "bin": "(0.4,0.5]",
+        "n": 1726,
+        "avg_conf": 0.4468,
+        "acc": 0.2317
+      },
+      {
+        "bin": "(0.5,0.6]",
+        "n": 1438,
+        "avg_conf": 0.5483,
+        "acc": 0.2865
+      },
+      {
+        "bin": "(0.6,0.7]",
+        "n": 1239,
+        "avg_conf": 0.6482,
+        "acc": 0.3067
+      },
+      {
+        "bin": "(0.7,0.8]",
+        "n": 1212,
+        "avg_conf": 0.7505,
+        "acc": 0.3672
+      },
+      {
+        "bin": "(0.8,0.9]",
+        "n": 1445,
+        "avg_conf": 0.8511,
+        "acc": 0.472
+      },
+      {
+        "bin": "(0.9,1.0]",
+        "n": 1862,
+        "avg_conf": 0.9491,
+        "acc": 0.6874
+      }
+    ],
+    "n_tokens": 13025
+  },
+  "end_token_diagnostic": {
+    "mean_p_end_at_true_end": 0.8151,
+    "mean_p_end_mid_caption": 0.1512,
+    "n_end_positions": 1214
+  }
+}

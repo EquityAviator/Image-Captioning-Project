@@ -6,6 +6,8 @@ export interface PredictResponse {
   caption: string;
   inference_time: string;
   confidence: number;
+  semantic_score?: number | null;
+  semantic_pmi?: number | null;
   provider: string;
   success: boolean;
   error?: string | null;
@@ -67,7 +69,11 @@ export interface HistoryEntry {
 
 export type ThemeMode = "dark" | "light" | "system";
 
-export type InferenceProvider = "auto" | "notebook-tensorflow" | "huggingface-blip";
+export type InferenceProvider =
+  | "auto"
+  | "attention"
+  | "notebook-tensorflow"
+  | "huggingface-blip";
 
 export interface AppSettings {
   theme: ThemeMode;

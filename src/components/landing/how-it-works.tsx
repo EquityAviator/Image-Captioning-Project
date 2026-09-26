@@ -16,14 +16,14 @@ const steps = [
     icon: Scan,
     title: "Extract features",
     description:
-      "The image is resized to 224×224 and passed through the DenseNet201 encoder, producing a 1920-dim feature vector that summarises the visual content.",
+      "The image is resized to 224×224 and passed through the frozen CLIP ViT-B/16 vision trunk, producing 196 patch tokens of 768 dims that preserve WHERE every object is.",
   },
   {
     n: "03",
     icon: Type,
     title: "Decode caption",
     description:
-      "Starting from the special “startseq” token, the LSTM decoder samples one word at a time until it emits “endseq” or hits the max length.",
+      "A CLIP zero-shot router checks the domain first: real photos go to the Bahdanau-attention LSTM (GRPO-tuned, beam-5 with a min-length guard); cartoons and screenshots auto-route to BLIP.",
   },
   {
     n: "04",

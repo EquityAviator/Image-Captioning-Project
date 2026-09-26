@@ -7,64 +7,62 @@ import { Card } from "@/components/ui/card";
 const sections = [
   {
     icon: Network,
-    title: "Encoder — DenseNet201",
-    body: "The encoder is a DenseNet201 convolutional network pretrained on ImageNet. We remove the final classification head (model.layers[-2]) and apply global average pooling, yielding a 1920-dimensional feature vector for every 224×224 input image. The encoder weights are frozen during decoder training — only the decoder learns.",
+    title: "Encoder — CLIP ViT-B/16",
+    body: "A frozen OpenAI CLIP ViT-B/16 vision trunk, pretrained on 400M image-text pairs, converts each 224×224 image into 196 patch tokens of 768 dims. Unlike global average pooling, every spatial position survives into the decoder. Features are precomputed once (fp16 memmap) and the trunk runs fp16 on CUDA / fp32 on CPU.",
     points: [
-      "Backbone: DenseNet201 (ImageNet weights)",
-      "Output: 1920-dim feature vector",
-      "Trainable: No (frozen at inference)",
+      "Backbone: CLIP ViT-B/16 (400M pairs)",
+      "Output: 196 × 768-dim patch tokens",
+      "Trainable: No (frozen; features cached)",
     ],
   },
   {
     icon: Layers,
-    title: "Decoder — LSTM",
-    body: "The decoder is a custom Keras model that takes two inputs: the image feature vector and a partial caption sequence. The image features pass through a Dense(256, relu) layer and are reshaped to (1, 256), then concatenated with the embedded caption tokens. A 256-unit LSTM consumes the merged sequence, and a residual addition merges the LSTM output back with the image features.",
+    title: "Decoder — Attention LSTM + GRPO",
+    body: "An 8.42M-parameter PyTorch decoder: Embedding(512) → Bahdanau additive attention over all 196 patches → LSTM(512) → softmax over the BPE vocabulary. Trained with cross-entropy, then fine-tuned by GRPO against a CIDEr-D reward (G=5 rollouts, group-relative advantage, EMA weights served).",
     points: [
-      "Embedding dim: 256",
-      "LSTM units: 256",
-      "Dense layers: 256 → 128 → vocab_size",
-      "Dropout: 0.5 (×2)",
+      "Attention: Bahdanau additive",
+      "LSTM units: 512 · Params: 8.42M",
+      "RL: GRPO, CIDEr-D reward, EMA 0.999",
     ],
   },
   {
     icon: Type,
-    title: "Embedding Layer",
-    body: "Each token in the partial caption is mapped to a 256-dim dense vector via a learned embedding. The embedding is trained jointly with the rest of the decoder, so semantically related words end up close in embedding space.",
+    title: "Tokenizer — BPE-6k",
+    body: "A byte-pair encoding vocabulary of ~6,000 subword tokens replaces the old word-level tokenizer, so rare words compose from pieces instead of collapsing to UNK. The same tokenizer encodes references and decodes predictions.",
     points: [
-      "Vocabulary size: ~8,000 tokens",
-      "Embedding dimension: 256",
-      "mask_zero = False (manual padding)",
+      "Vocabulary: ~6,000 subwords",
+      "No UNK tokens — rare words compose",
+      "Shared train/inference encoding",
     ],
   },
   {
     icon: Database,
     title: "Training Dataset — Flickr8K",
-    body: "Flickr8K contains 8,091 photographs crawled from Flickr, each annotated with 5 human-written captions (40,455 captions total). After lowercasing, removing non-alphabetic characters, and wrapping with startseq/endseq tokens, captions are tokenised with Keras’ Tokenizer.",
+    body: "Flickr8K: 8,091 photographs, each with 5 human captions (40,455 total), split 85/15 into 6,877 train / 1,214 validation. All model improvements were measured on the same fixed validation split with the same evaluation protocol.",
     points: [
-      "Images: 8,091",
-      "Captions: 40,455",
+      "Images: 8,091 · Captions: 40,455",
       "Train/val split: 85% / 15%",
-      "Preprocessing: lowercase + startseq/endseq",
+      "Eval: beam-5, GNMT α=1.2, seed 42",
     ],
   },
   {
     icon: Hash,
-    title: "Tokenizer & Vocabulary",
-    body: "The Keras Tokenizer is fit on the training captions, producing a word→index mapping. Inference uses the same tokenizer to convert the running caption string into a padded integer sequence and to map predicted indices back to words via idx_to_word.",
+    title: "Decoding — Beam-5 + Guards",
+    body: "Incremental state-carrying beam search (beam 5) with GNMT length normalisation (α=1.2) and a soft 2-gram repeat penalty. A min-length guard suppresses END until 8 tokens — countering GRPO's shortness bias — and trailing function words are trimmed after decode.",
     points: [
-      "Tokeniser: keras.preprocessing.text.Tokenizer",
-      "Special tokens: startseq / endseq",
-      "Padding: post, to max_length",
+      "Beam 5 · GNMT α=1.2 · repeat penalty",
+      "Min-length guard: 8 BPE tokens",
+      "O(T) state-carrying: ~590 ms warm",
     ],
   },
   {
     icon: GitBranch,
-    title: "Prediction Pipeline",
-    body: "At inference time we pre-compute the DenseNet201 feature once, then run the decoder in a greedy loop: tokenize the running caption → pad → predict next-word distribution → argmax → append word. The loop terminates on endseq or after max_length iterations.",
+    title: "Serving — Router + Calibration",
+    body: "At request time the CLIP trunk doubles as a zero-shot domain router: real photos stay with the specialist; cartoons/screenshots/food photos route to local BLIP (margin rule ≥0.02 cosine). Displayed confidence is tempered at T=1.3 in a separate pass — the decode path never sees it.",
     points: [
-      "Strategy: greedy argmax decoding",
-      "Loop: up to max_length iterations",
-      "Stop conditions: endseq token or max length",
+      "OOD router: 100% recall, 10% false-OOD",
+      "Confidence: ECE 0.0862 at T=1.3",
+      "Fallback: local BLIP (~2.5 s, lazy)",
     ],
   },
 ];
@@ -89,9 +87,9 @@ export function ModelSection() {
             transition={{ duration: 0.6 }}
             className="mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl"
           >
-            A faithful implementation of the
+            Three generations of research,
             <br />
-            <span className="text-gradient">Flickr8K notebook</span>
+            <span className="text-gradient">one production model</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 24 }}
@@ -100,9 +98,9 @@ export function ModelSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mt-4 text-lg text-muted-foreground"
           >
-            Every layer, every hyperparameter, every preprocessing step matches
-            the original Kaggle notebook — only wrapped in a production-grade
-            FastAPI service.
+            Started from the classic DenseNet+LSTM notebook recipe, then
+            rebuilt: spatial attention, BPE, GRPO reinforcement learning and
+            CLIP features — every step measured on the same validation split.
           </motion.p>
         </div>
 

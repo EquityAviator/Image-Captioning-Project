@@ -1,0 +1,85 @@
+{
+  "n_val_pairs": 62515,
+  "token_nll_by_temperature": {
+    "0.5": 5.4176,
+    "0.6": 4.7695,
+    "0.7": 4.3691,
+    "0.8": 4.1361,
+    "0.9": 4.0281,
+    "1.0": 4.0196,
+    "1.1": 4.0901,
+    "1.2": 4.2192,
+    "1.3": 4.3865,
+    "1.5": 4.7682,
+    "1.7": 5.1452,
+    "2.0": 5.6373
+  },
+  "T_star": 1.0,
+  "top1_accuracy": 0.2709,
+  "mean_max_prob_displayed": 0.2781,
+  "ece_at_T1": 0.013,
+  "ece_at_Tstar": 0.013,
+  "reliability_bins_T1": [
+    {
+      "bin": "(0.0,0.1]",
+      "n": 11680,
+      "avg_conf": 0.0616,
+      "empirical_acc": 0.0689
+    },
+    {
+      "bin": "(0.1,0.2]",
+      "n": 19252,
+      "avg_conf": 0.1507,
+      "empirical_acc": 0.1513
+    },
+    {
+      "bin": "(0.2,0.3]",
+      "n": 12313,
+      "avg_conf": 0.2442,
+      "empirical_acc": 0.249
+    },
+    {
+      "bin": "(0.3,0.4]",
+      "n": 5771,
+      "avg_conf": 0.3457,
+      "empirical_acc": 0.3483
+    },
+    {
+      "bin": "(0.4,0.5]",
+      "n": 3455,
+      "avg_conf": 0.4458,
+      "empirical_acc": 0.4263
+    },
+    {
+      "bin": "(0.5,0.6]",
+      "n": 2126,
+      "avg_conf": 0.5457,
+      "empirical_acc": 0.5061
+    },
+    {
+      "bin": "(0.6,0.7]",
+      "n": 1979,
+      "avg_conf": 0.6523,
+      "empirical_acc": 0.5841
+    },
+    {
+      "bin": "(0.7,0.8]",
+      "n": 2986,
+      "avg_conf": 0.7547,
+      "empirical_acc": 0.6849
+    },
+    {
+      "bin": "(0.8,0.9]",
+      "n": 2511,
+      "avg_conf": 0.8379,
+      "empirical_acc": 0.7845
+    },
+    {
+      "bin": "(0.9,1.0]",
+      "n": 442,
+      "avg_conf": 0.9344,
+      "empirical_acc": 0.9615
+    }
+  ],
+  "interpretation": "T* < 1 => softmax UNDER-confident (raise displayed values); T* > 1 => OVER-confident (shrink). ECE = |displayed - accuracy|."
+}

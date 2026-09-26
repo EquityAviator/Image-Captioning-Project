@@ -4,10 +4,12 @@ HTTP routes — thin wrappers around the ModelManager singleton.
 
 from __future__ import annotations
 
+import io
 import time
 from typing import List
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status, Query
+from PIL import Image
 
 from api.schemas import (
     BatchPredictItem,
@@ -31,7 +33,7 @@ ALLOWED_CONTENT_TYPES = {
 }
 MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 
-VALID_PROVIDERS = ["auto", "notebook-tensorflow", "huggingface-blip"]
+VALID_PROVIDERS = ["auto", "notebook-tensorflow", "huggingface-blip", "attention"]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -149,8 +151,22 @@ async def predict(
     
     loop = asyncio.get_running_loop()
     t0 = time.perf_counter()
+
+    def _infer_and_score():
+        from inference import blip_scorer
+        res = mgr.predict_bytes(blob)
+        if res.success:
+            try:
+                img = Image.open(io.BytesIO(blob))
+                out = blip_scorer.score(img, res.caption)
+                if out is not None:
+                    res.semantic_score, res.semantic_pmi = out
+            except Exception as exc:  # noqa: BLE001
+                log.warning("semantic scoring skipped: %s", exc)
+        return res
+
     # Run CPU-heavy inference in a threadpool so the event loop stays alive.
-    result = await loop.run_in_executor(None, mgr.predict_bytes, blob)
+    result = await loop.run_in_executor(None, _infer_and_score)
     wall_ms = (time.perf_counter() - t0) * 1000.0
 
     if not result.success:
@@ -168,6 +184,8 @@ async def predict(
         caption=result.caption,
         inference_time=f"{result.inference_time_ms:.1f}ms",
         confidence=result.confidence,
+        semantic_score=getattr(result, "semantic_score", None),
+        semantic_pmi=getattr(result, "semantic_pmi", None),
         provider=result.provider,
         success=True,
     )
@@ -199,11 +217,22 @@ async def predict_batch(files: List[UploadFile] = File(...)) -> BatchPredictResp
             ))
             continue
         res = await loop.run_in_executor(None, mgr.predict_bytes, blob)
+        if res.success:
+            try:
+                from inference import blip_scorer
+                img = Image.open(io.BytesIO(blob))
+                out = blip_scorer.score(img, res.caption)
+            except Exception:
+                out = None
+        else:
+            out = None
+        sem, pmi = (out if out else (None, None))
         items.append(BatchPredictItem(
             filename=f.filename or "unknown",
             caption=res.caption,
             inference_time=f"{res.inference_time_ms:.1f}ms",
             confidence=res.confidence,
+            semantic_score=sem,
             success=res.success,
             error=res.error,
         ))

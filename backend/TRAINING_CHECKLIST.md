@@ -1,156 +1,83 @@
-# Training Checklist
+# CaptionAI — Training Checklist (Actual Pipeline)
 
-## Pre-Training Checklist
+## Prerequisites
+- [ ] Dataset: `dataset/Images/` (8,091 .jpg) + `dataset/captions.txt` (40,455 rows)
+- [ ] GPU: NVIDIA (GTX 1080 verified; sm_61/Pascal works with torch cu121 wheels)
+- [ ] Python 3.11 + uv
+- [ ] Environment: `backend/.venv` with `tensorflow-cpu==2.21.0`, `torch==2.5.1+cu121`, `numpy`, `pandas`, `Pillow`, `tqdm`, `nltk`
 
-- [ ] Dataset is in correct location (`dataset/Images/`)
-- [ ] Captions file exists (`dataset/captions.txt`)
-- [ ] Dataset has ~8092 images
-- [ ] Captions file has ~40,000+ caption entries
-- [ ] GPU is available (recommended)
-- [ ] TensorFlow is installed
-- [ ] Python environment is activated
+## Run Order (sequential)
 
-## Training Command
-
+### 1. Feature Extraction (CPU, one-time)
 ```bash
-cd /c/Users/mh562/Documents/Image Caption project/backend
-
-/c/Users/mh562/Anaconda3/python.exe train_improved.py \
-    --images ../dataset/Images \
-    --captions ../dataset/captions.txt \
-    --epochs 100 \
-    --batch-size 32 \
-    --patience 5 \
-    --tensorboard
+.venv/Scripts/python.exe train_features.py          # --limit N for smoke test
 ```
+- [ ] Completes without error (~15 min for full dataset)
+- [ ] Outputs in `weights/`: `features.npy`, `image_names.json`, `tokenizer.pkl`, `word_index.json`, `train_images.json`, `val_images.json`, `metadata.json`
+- [ ] Metadata shows: `vocab_size ≈ 8427`, `max_length = 35`, `n_train_images = 6877`, `n_val_images = 1214`
 
-## Training Progress Checklist
-
-### Epoch 1-10: Initial Learning
-- [ ] Loss starts decreasing from ~5.0
-- [ ] Loss reaches ~3.0 by epoch 10
-- [ ] No NaN or infinite values
-
-### Epoch 10-30: Feature Learning
-- [ ] Loss continues decreasing
-- [ ] Loss reaches ~2.5 by epoch 30
-- [ ] Validation loss follows training loss
-
-### Epoch 30-50: Refinement
-- [ ] Loss decreases slowly
-- [ ] Loss reaches ~2.0 by epoch 50
-- [ ] Model starts generating coherent captions
-
-### Epoch 50+: Convergence
-- [ ] Loss plateaus around 1.8-2.2
-- [ ] Early stopping may trigger
-- [ ] Final validation loss < 2.0
-
-## Post-Training Checklist
-
-### Model Quality Verification
-- [ ] Check final training loss
-- [ ] Check final validation loss
-- [ ] Verify weights saved to `weights/`
-- [ ] Verify tokenizer saved
-- [ ] Verify metadata saved
-
-### Model Testing
-- [ ] Test with simple images
-- [ ] Test with complex images
-- [ ] Verify captions are coherent
-- [ ] Verify confidence > 0.6
-- [ ] Test inference speed
-
-### Deployment
-- [ ] Copy weights to production server
-- [ ] Update backend configuration
-- [ ] Restart backend service
-- [ ] Verify API endpoints work
-- [ ] Test with frontend
-
-## Success Criteria
-
-### Minimum Acceptable
-- [ ] Final val_loss < 2.5
-- [ ] Captions are somewhat relevant
-- [ ] Confidence > 0.4
-- [ ] No repetitive words
-
-### Good Quality
-- [ ] Final val_loss < 2.0
-- [ ] Captions are coherent and relevant
-- [ ] Confidence > 0.6
-- [ ] Handles various image types
-
-### Excellent Quality
-- [ ] Final val_loss < 1.8
-- [ ] Captions are detailed and accurate
-- [ ] Confidence > 0.75
-- [ ] Handles complex scenes
-
-## Troubleshooting Checklist
-
-### If Loss Not Decreasing
-- [ ] Check dataset paths
-- [ ] Verify captions format
-- [ ] Try smaller batch size
-- [ ] Check for GPU availability
-
-### If Overfitting
-- [ ] Increase dropout to 0.6
-- [ ] Reduce patience to 3
-- [ ] Use smaller learning rate
-- [ ] Add more data augmentation
-
-### If Slow Training
-- [ ] Use GPU
-- [ ] Reduce batch size
-- [ ] Use mixed precision
-- [ ] Check system resources
-
-## Monitoring Checklist
-
-### Console Output
-- [ ] Monitor loss values
-- [ ] Watch for plateaus
-- [ ] Check training time per epoch
-- [ ] Verify no errors/warnings
-
-### TensorBoard
-- [ ] Check loss curves
-- [ ] Monitor accuracy
-- [ ] Verify no overfitting
-- [ ] Check learning rate changes
-
-## Final Verification
-
+### 2. PyTorch GPU Decoder Training
 ```bash
-# Test the trained model
-curl -X POST http://localhost:8000/predict \
-     -F "file=@test_image.jpg" \
-     -F "provider=notebook-tensorflow"
-
-# Expected output:
-# - Coherent caption
-# - Confidence > 0.6
-# - Reasonable inference time
+.venv/Scripts/python.exe train_torch.py \
+    --epochs 100 --batch-size 512 \
+    --patience 20 --rlr-patience 6 --rlr-factor 0.5 --min-lr 1e-6 \
+    --dropout 0.5 --seed 42
 ```
+- [ ] CUDA detected (`device: cuda (NVIDIA GeForce GTX 1080)`)
+- [ ] Train/val pairs built (~300k train / ~53k val)
+- [ ] Epochs run; loss decreases; early stopping triggers at ~epoch 26
+- [ ] Best checkpoint saved: `weights/decoder_torch.pt`
+- [ ] `metadata.json` updated with `training.history`, `best_epoch`, `best_val_loss`
 
-## Deployment Checklist
+### 3. Torch → Keras Conversion (with logit gate)
+```bash
+.venv/Scripts/python.exe convert_torch_to_keras.py
+```
+- [ ] Gate passes: `max |torch−keras| < 1e-4` (actual ~2e-6)
+- [ ] `weights/model.h5` written
+- [ ] `metadata.json` updated with conversion stats
 
-- [ ] Backup existing weights
-- [ ] Copy new weights to production
-- [ ] Update documentation
-- [ ] Notify users of improvement
-- [ ] Monitor production performance
-- [ ] Collect user feedback
+### 4. Evaluation (Batched)
+```bash
+.venv/Scripts/python.exe evaluate.py --beam 5
+```
+- [ ] Decodes 1,214 val images in ~2 min
+- [ ] Beam BLEU-1 ≥ 0.53, BLEU-2 ≥ 0.32
+- [ ] No repetitive "man man man" in beam outputs
+- [ ] `metadata.json` updated with `evaluation` section
 
-## Maintenance Checklist
+## Verification
 
-- [ ] Monitor model performance
-- [ ] Collect user feedback
-- [ ] Retrain periodically
-- [ ] Update dataset regularly
-- [ ] Improve preprocessing
-- [ ] Experiment with new architectures
+### Weights Directory Contents
+- [ ] `weights/features.npy` — (8091, 1920) float32
+- [ ] `weights/tokenizer.pkl` — Keras Tokenizer (loads in backend)
+- [ ] `weights/word_index.json` — plain dict for torch
+- [ ] `weights/train_images.json`, `val_images.json` — splits
+- [ ] `weights/decoder_torch.pt` — torch checkpoint (best epoch)
+- [ ] `weights/model.h5` — Keras decoder weights (deployed)
+- [ ] `weights/metadata.json` — full provenance
+
+### Backend Activation
+- [ ] Restart backend: `docker compose up -d --build` or `python -m uvicorn main:app`
+- [ ] Health check: `GET /health` → provider `notebook-tensorflow` active
+- [ ] Test predict: `POST /predict` with image + `provider=notebook-tensorflow`
+- [ ] Caption is coherent, non-repetitive, confidence > 0.2
+
+## Success Criteria (Actual Measured Targets)
+
+| Criterion | Target | Achieved |
+|-----------|--------|----------|
+| Beam BLEU-1 | ≥ 0.55 | 0.5334 |
+| Beam BLEU-2 | ≥ 0.35 | 0.3203 |
+| No repetition | — | ✅ (beam) |
+| Logit gate | < 1e-4 | 1.97e-06 ✅ |
+
+*Notes:* 
+- val_loss with label smoothing 0.1 is 4.75; equivalent plain CE ≈ 3.85
+- This architecture on Flickr8K peaks ~BLEU-1 0.53–0.55; further gains need encoder fine-tuning or attention
+
+## Cleanup
+- [ ] `train_improved.py` deleted (empty file)
+- [ ] `performance.tsx` updated with real metrics
+- [ ] `TRAINING_GUIDE.md` and this checklist reflect actual pipeline
+- [ ] Old `train.py`, `train_local.py` kept for reference but not used

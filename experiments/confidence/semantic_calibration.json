@@ -1,0 +1,83 @@
+{
+  "n": 150,
+  "mean": 0.507,
+  "p10": -0.3449,
+  "p25": -0.0681,
+  "median": 0.3279,
+  "p75": 0.9334,
+  "p90": 1.5795,
+  "samples": [
+    {
+      "image": "3688858505_e8afd1475d.jpg",
+      "caption": "woman in red dress is standing on the street",
+      "pmi": -0.2608,
+      "sem": 0.0957
+    },
+    {
+      "image": "3689355450_fd559b816d.jpg",
+      "caption": "boy is are are are are are are are are are are are are are are are are are are are are are are are in the park",
+      "pmi": 0.1163,
+      "sem": 0.1965
+    },
+    {
+      "image": "368954110_821ccf005c.jpg",
+      "caption": "two dogs are are are are are are are are are are are are are are are are are are are are are are are are are and one two the and dog and and",
+      "pmi": -0.0341,
+      "sem": 0.149
+    },
+    {
+      "image": "3689727848_b53f931130.jpg",
+      "caption": "young boy is swimming in the pool in the pool",
+      "pmi": 0.4983,
+      "sem": 0.3637
+    },
+    {
+      "image": "3689975998_72f50b6d91.jpg",
+      "caption": "man in red shirt is standing in the air in the air",
+      "pmi": -0.4622,
+      "sem": 0.0633
+    },
+    {
+      "image": "3690107455_0fdb4ecee7.jpg",
+      "caption": "man in white shirt is standing on the beach",
+      "pmi": -0.64,
+      "sem": 0.0436
+    },
+    {
+      "image": "3690159129_93ba49ea18.jpg",
+      "caption": "man in red shirt is standing on the air in the air",
+      "pmi": -0.3744,
+      "sem": 0.076
+    },
+    {
+      "image": "3690189273_927d42ff43.jpg",
+      "caption": "man in white shirt is wearing red shirt",
+      "pmi": 0.6848,
+      "sem": 0.4638
+    },
+    {
+      "image": "3690348036_a01f243fb0.jpg",
+      "caption": "man is are are are are are are are are are are are are are are are are are are are are are are are are are jump in the",
+      "pmi": -0.473,
+      "sem": 0.0619
+    },
+    {
+      "image": "3690425778_3b390b3ea5.jpg",
+      "caption": "man is jumping off his his his his board",
+      "pmi": 1.0457,
+      "sem": 0.6586
+    },
+    {
+      "image": "3690431163_1d81e19549.jpg",
+      "caption": "man in red shirt and woman in red shirt and red hat and man in red shirt and man in red hat and red hat",
+      "pmi": -0.2733,
+      "sem": 0.0933
+    },
+    {
+      "image": "369047365_35476becc9.jpg",
+      "caption": "man is walking on the path in the background",
+      "pmi": 0.3722,
+      "sem": 0.3016
+    }
+  ]
+}

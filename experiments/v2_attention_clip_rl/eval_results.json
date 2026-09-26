@@ -1,0 +1,82 @@
+{
+  "checkpoint": "..\\experiments\\v2_attention_clip_rl\\best.pt",
+  "epoch": 4,
+  "results": {
+    "greedy": {
+      "bleu1": 0.652,
+      "bleu2": 0.4252,
+      "bleu3": 0.259,
+      "bleu4": 0.1649,
+      "rouge_l": 0.2774
+    },
+    "beam5_a1.2": {
+      "bleu1": 0.6559,
+      "bleu2": 0.4344,
+      "bleu3": 0.2698,
+      "bleu4": 0.1727,
+      "rouge_l": 0.2782
+    }
+  },
+  "samples": [
+    {
+      "img": "3688858505_e8afd1475d.jpg",
+      "greedy": "woman in white dress is standing in the",
+      "beam5_a1.2": "woman in white dress is standing in front of the",
+      "ref": "blond girl in green dress and elaborate gold necklace stands in front of few women and man | few people with girl standing up in the center wearing green dress"
+    },
+    {
+      "img": "3689355450_fd559b816d.jpg",
+      "greedy": "boy is playing in the water",
+      "beam5_a1.2": "young boy is playing in the water",
+      "ref": "boy wearing plaid shorts jumping over big water fountain | man in plaid shorts is jumping over fountain"
+    },
+    {
+      "img": "368954110_821ccf005c.jpg",
+      "greedy": "three children are playing on the grass",
+      "beam5_a1.2": "three children are playing on the grass",
+      "ref": "girl in purple top holds toddler between herself and another girl on the grass in front of bush | three children sit on the grass"
+    },
+    {
+      "img": "3689727848_b53f931130.jpg",
+      "greedy": "two people are jumping into the pool",
+      "beam5_a1.2": "black dog is jumping into the pool",
+      "ref": "boy tries to catch ball while jumping into pool | male dives for ball that flying over pool"
+    },
+    {
+      "img": "3689975998_72f50b6d91.jpg",
+      "greedy": "woman in the white shirt is running in the",
+      "beam5_a1.2": "woman is running in the grass",
+      "ref": "an asian girl is running outside | an asian woman is running on rocky path"
+    },
+    {
+      "img": "3690107455_0fdb4ecee7.jpg",
+      "greedy": "woman in the in the",
+      "beam5_a1.2": "woman is standing on the edge of the water",
+      "ref": "woman is climbing rocky hill overshadowed by partly cloudy sky | woman nears cliff edge"
+    },
+    {
+      "img": "3690159129_93ba49ea18.jpg",
+      "greedy": "man in black shirt is on the",
+      "beam5_a1.2": "man is in the air",
+      "ref": "man doing rollskating trick on ramp | man grinding the lip of pool on his rollerblades"
+    },
+    {
+      "img": "3690189273_927d42ff43.jpg",
+      "greedy": "woman in blue shirt is running in the",
+      "beam5_a1.2": "woman in white shirt is running on the street",
+      "ref": "female runner in race | woman athlete wearing orange and black is running whilst carrying an orange beverage bottle"
+    },
+    {
+      "img": "3690348036_a01f243fb0.jpg",
+      "greedy": "man is jumping on the in the woods",
+      "beam5_a1.2": "man is on bike in the woods",
+      "ref": "bmx biker is in midair attempting trick | boy does trick on bike in the woods"
+    },
+    {
+      "img": "3690425778_3b390b3ea5.jpg",
+      "greedy": "man is jumping off the water",
+      "beam5_a1.2": "man is jumping into the water",
+      "ref": "man jumps off of dock and into the water | person jumping off dock into water"
+    }
+  ]
+}

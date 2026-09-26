@@ -1,0 +1,70 @@
+{
+  "checkpoint": "..\\experiments\\v2_attention_clip_distill\\best.pt",
+  "epoch": 26,
+  "results": {
+    "greedy": {
+      "bleu1": 0.4953,
+      "bleu2": 0.2999,
+      "bleu3": 0.1843,
+      "bleu4": 0.1215,
+      "rouge_l": 0.2301
+    },
+    "beam5_a1.2": {
+      "bleu1": 0.4889,
+      "bleu2": 0.2843,
+      "bleu3": 0.174,
+      "bleu4": 0.1153,
+      "rouge_l": 0.2142
+    }
+  },
+  "samples": [
+    {
+      "img": "3688858505_e8afd1475d.jpg",
+      "greedy": "a woman sitting on a bench",
+      "beam5_a1.2": "a woman sitting on a bench",
+      "ref": "blond girl in green dress and elaborate gold necklace stands in front of few women and man | few people with girl standing up in the center wearing green dress"
+    },
+    {
+      "img": "3689355450_fd559b816d.jpg",
+      "greedy": "a man standing on a fountain",
+      "beam5_a1.2": "the water is splashing",
+      "ref": "boy wearing plaid shorts jumping over big water fountain | man in plaid shorts is jumping over fountain"
+    },
+    {
+      "img": "368954110_821ccf005c.jpg",
+      "greedy": "three children sitting on the grass",
+      "beam5_a1.2": "a group of children sitting on the grass",
+      "ref": "girl in purple top holds toddler between herself and another girl on the grass in front of bush | three children sit on the grass"
+    },
+    {
+      "img": "3689727848_b53f931130.jpg",
+      "greedy": "a man jumping into a pool",
+      "beam5_a1.2": "a man jumping into a swimming pool",
+      "ref": "boy tries to catch ball while jumping into pool | male dives for ball that flying over pool"
+    },
+    {
+      "img": "3689975998_72f50b6d91.jpg",
+      "greedy": "a woman walking down a hill",
+      "beam5_a1.2": "the woman is walking",
+      "ref": "an asian girl is running outside | an asian woman is running on rocky path"
+    },
+    {
+      "img": "3690107455_0fdb4ecee7.jpg",
+      "greedy": "woman in blue shirt and blue jeans stands on the edge of hill with cloudy sky",
+      "beam5_a1.2": "the sky is blue",
+      "ref": "woman is climbing rocky hill overshadowed by partly cloudy sky | woman nears cliff edge"
+    },
+    {
+      "img": "3690159129_93ba49ea18.jpg",
+      "greedy": "man in black shorts and white shirt is performing trick on his skateboard",
+      "beam5_a1.2": "a man doing a trick on a skateboard",
+      "ref": "man doing rollskating trick on ramp | man grinding the lip of pool on his rollerblades"
+    },
+    {
+      "img": "3690189273_927d42ff43.jpg",
+      "greedy": "woman in blue shirt and blue shorts is jogging in front of crowd",
+      "beam5_a1.2": "a woman in a blue shirt",
+      "ref": "female runner in race | woman athlete wearing orange and black is running whilst carrying an orange beverage bottle"
+    }
+  ]
+}

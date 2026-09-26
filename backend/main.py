@@ -68,7 +68,8 @@ async def _startup() -> None:
     """Pre-load the model so the first request is fast."""
     log.info("startup: loading model manager …")
     mgr = ModelManager.get_instance()
-    await mgr.initialize()
+    provider = os.environ.get("PROVIDER", "auto")
+    await mgr.initialize_with_provider(provider)
     log.info(
         "startup: ready (provider=%s, weights=%s)",
         mgr.provider_name,

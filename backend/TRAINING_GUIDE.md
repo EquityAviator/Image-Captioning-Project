@@ -1,184 +1,98 @@
-# Improved Training Guide for DenseNet201+LSTM Model
+# CaptionAI — GPU Training Pipeline (DenseNet201 + LSTM)
 
 ## Overview
-This guide explains how to properly train the DenseNet201+LSTM model to achieve good captioning performance.
+This guide documents the **actual** training pipeline used to produce the deployed model: PyTorch GPU decoder training → Keras weight conversion → BLEU/ROUGE evaluation. The DenseNet201 encoder is frozen; only the LSTM decoder is trained.
 
-## Key Improvements Over Original Training
+## Pipeline Stages
 
-### 1. Training Duration
-- **Original**: 10 epochs (insufficient)
-- **Improved**: 100 epochs (with early stopping)
-- **Expected**: Model should converge around 30-50 epochs
-
-### 2. Learning Rate Strategy
-- **Original**: Fixed learning rate
-- **Improved**: ReduceLROnPlateau with factor=0.2
-- **Benefit**: Faster convergence, better final accuracy
-
-### 3. Early Stopping
-- **Original**: Basic early stopping
-- **Improved**: Patience=5 with validation monitoring
-- **Benefit**: Prevents overfitting
-
-### 4. Model Quality Targets
-- **Good**: val_loss < 2.0
-- **Fair**: 2.0 < val_loss < 2.5  
-- **Poor**: val_loss > 2.5 (needs more training)
-
-## Training Command
-
+### Stage 0: Environment (Python 3.11 + uv)
 ```bash
-cd /c/Users/mh562/Documents/Image Caption project/backend
-
-# Basic training (100 epochs, batch_size=32)
-/c/Users/mh562/Anaconda3/python.exe train_improved.py \
-    --images ../dataset/Images \
-    --captions ../dataset/captions.txt \
-    --epochs 100 \
-    --batch-size 32 \
-    --patience 5
-
-# With TensorBoard logging
-/c/Users/mh562/Anaconda3/python.exe train_improved.py \
-    --images ../dataset/Images \
-    --captions ../dataset/captions.txt \
-    --epochs 100 \
-    --batch-size 32 \
-    --patience 5 \
-    --tensorboard
+cd Image-Captioning-Project/backend
+uv venv .venv --python 3.11
+uv pip install --python .venv/Scripts/python.exe tensorflow-cpu==2.21.0 numpy pandas Pillow tqdm nltk
+# Install torch 2.5.1+cu121 from local wheel (GTX 1080 requires cu121 wheel)
+uv pip install --python .venv/Scripts/python.exe <torch-wheel-path>
 ```
 
-## Expected Training Progress
-
-### Phase 1: Initial Learning (Epochs 1-10)
-- Loss decreases rapidly
-- Model learns basic language patterns
-- Expected loss: 5.0 → 3.0
-
-### Phase 2: Feature Learning (Epochs 10-30)
-- Loss continues decreasing
-- Model learns visual-feature associations
-- Expected loss: 3.0 → 2.5
-
-### Phase 3: Refinement (Epochs 30-50)
-- Loss decreases slowly
-- Model refines caption quality
-- Expected loss: 2.5 → 2.0
-
-### Phase 4: Convergence (Epochs 50+)
-- Loss plateaus
-- Early stopping may trigger
-- Final loss: ~1.8-2.2
-
-## Monitoring Training
-
-### TensorBoard (if enabled)
+### Stage 1: Feature Extraction (CPU, one-time)
 ```bash
-# Start TensorBoard
-tensorboard --logdir=logs
-
-# Then open http://localhost:6006 in browser
+.venv/Scripts/python.exe train_features.py [--limit N]
 ```
+- Precomputes DenseNet201 features (224×224, /255, pooling="avg" → 1920-dim) for all images
+- Builds Keras Tokenizer on all captions (preprocessing: lowercase, strip non-[a-z ], drop len-1 words, wrap startseq/endseq)
+- 85/15 image-level split
+- Outputs: `weights/features.npy`, `tokenizer.pkl`, `word_index.json`, `train/val_images.json`, `metadata.json`
 
-### Expected Metrics
-- **Training loss**: Should decrease steadily
-- **Validation loss**: Should follow training loss (no overfitting)
-- **Accuracy**: Should increase to ~0.4-0.6
-
-## Expected Results
-
-### Good Training (val_loss < 2.0)
-```
-Final train loss: 1.85
-Final val loss: 1.92
-Model quality: GOOD
-```
-
-### Sample Captions
-- **Input**: Red square with yellow circle
-- **Output**: "a red square with a yellow circle in the middle"
-- **Confidence**: 0.75-0.90
-
-## Troubleshooting
-
-### Problem: Loss not decreasing
-**Solution**: 
-- Check dataset paths
-- Verify captions.txt format
-- Try smaller batch size (16 instead of 32)
-
-### Problem: Overfitting
-**Solution**:
-- Add more dropout (0.6 instead of 0.5)
-- Reduce patience to 3
-- Use smaller learning rate (0.0005)
-
-### Problem: Slow training
-**Solution**:
-- Use GPU (strongly recommended)
-- Reduce batch size to 16
-- Use mixed precision training
-
-## After Training
-
-### Verify Model Quality
+### Stage 2: PyTorch GPU Decoder Training
 ```bash
-# Test with sample image
-curl -X POST http://localhost:8000/predict \
-     -F "file=@test_image.jpg" \
-     -F "provider=notebook-tensorflow"
+.venv/Scripts/python.exe train_torch.py \
+    --epochs 100 --batch-size 512 \
+    --patience 20 --rlr-patience 6 --rlr-factor 0.5 --min-lr 1e-6 \
+    --dropout 0.5 --seed 42
+```
+- Exact notebook architecture (cell 20) in PyTorch
+- Adam lr=1e-3, clipnorm=5.0, label_smoothing=0.1, CrossEntropyLoss
+- Precomputes all (prefix→next) pairs once; batch=512 pairs/step
+- EarlyStopping patience=20, ReduceLROnPlateau patience=6 factor=0.5
+- Saves best `weights/decoder_torch.pt` + updates `metadata.json` with losses
+
+### Stage 3: Torch → Keras Weight Conversion
+```bash
+.venv/Scripts/python.exe convert_torch_to_keras.py
+```
+- Maps state_dict to Keras `build_decoder()` (Dense transpose, LSTM gates [i,f,c,o], Embedding copy)
+- **Gate**: torch vs Keras softmax on 50 random (feature, seq) pairs; max |diff| < 1e-4
+- Saves `weights/model.h5` + updates `metadata.json` with conversion stats
+
+### Stage 4: Evaluation
+```bash
+.venv/Scripts/python.exe evaluate.py [--beam 5] [--limit N]
+```
+- Batched greedy + beam search (lockstep across images, ~72 predict calls total)
+- Reports BLEU-1..4 + ROUGE-L on val split (1214 images)
+- Updates `metadata.json` with metrics
+
+## Actual Results (GTX 1080, 8GB)
+
+| Metric | Value |
+|--------|-------|
+| Feature extraction | 8,091 images, 14.5 min (batch 32) |
+| GPU training (best) | 26 epochs, 13.5 min, val_loss 4.7517 (with label smoothing 0.1) |
+| Conversion gate | max |torch−keras| = 1.97e-06 |
+| **Beam BLEU-1** | **0.5334** |
+| **Beam BLEU-2** | **0.3203** |
+| **Beam BLEU-3** | **0.1890** |
+| **Beam BLEU-4** | **0.1218** |
+| **Beam ROUGE-L** | **0.2216** |
+| Greedy BLEU-1 | 0.4372 (repetitive) |
+
+## Architecture Details (unchanged from notebook)
+- Encoder: DenseNet201 `include_top=False, pooling="avg"` → 1920-dim
+- Decoder: `Dense(256,relu) → Reshape(1,256) → concat(Embedding(vocab,256)) → LSTM(256) → Dropout(0.5) → Add(residual) → Dense(128,relu) → Dropout(0.5) → Dense(vocab,softmax)`
+- Vocab: 8,427 | Max length: 35 tokens (incl. start/end) | Split: 6,877 / 1,214 images
+
+## Decoding in Production
+Backend uses `inference/decoding.py`:
+- **Beam search** (width 5, GNMT length penalty α=0.6, 2-gram repeat penalty 0.4)
+- Greedy fallback
+- Identical scoring to evaluation harness
+
+## Quick Start (reproduce best model)
+```bash
+cd backend
+.venv/Scripts/python.exe train_features.py          # ~15 min
+.venv/Scripts/python.exe train_torch.py --patience 20 --rlr-patience 6 --rlr-factor 0.5  # ~15 min
+.venv/Scripts/python.exe convert_torch_to_keras.py  # ~10 sec
+.venv/Scripts/python.exe evaluate.py                # ~2 min
+# model.h5 + tokenizer.pkl + metadata.json now in weights/
 ```
 
-### Expected Output
-```json
-{
-  "caption": "a red square with a yellow circle",
-  "inference_time": "1500ms",
-  "confidence": 0.85,
-  "provider": "notebook-tensorflow",
-  "success": true
-}
-```
-
-## Hardware Recommendations
-
-### Minimum (CPU)
-- **CPU**: Intel i7 / Ryzen 7
-- **RAM**: 16GB
-- **Time**: ~2-3 days for 100 epochs
-
-### Recommended (GPU)
-- **GPU**: RTX 3080 / 4080 (8GB+ VRAM)
-- **RAM**: 16GB
-- **Time**: ~2-3 hours for 100 epochs
-
-### Cloud Options
-- **Google Colab**: Free T4 GPU (~4-6 hours)
-- **AWS**: g4dn.xlarge (~$0.50/hour)
-- **Lambda Labs**: RTX 3090 (~$0.60/hour)
-
-## Success Criteria
-
-✅ **Good Model**: 
-- val_loss < 2.0
-- Captions are coherent and relevant
-- Confidence > 0.6
-
-⚠️ **Fair Model**:
-- 2.0 < val_loss < 2.5
-- Captions are somewhat relevant
-- Confidence 0.4-0.6
-
-❌ **Poor Model**:
-- val_loss > 2.5
-- Captions are repetitive/nonsensical
-- Confidence < 0.4
-
-## Next Steps
-
-1. **Start training** with the improved script
-2. **Monitor** TensorBoard or console output
-3. **Test** the trained model with various images
-4. **Deploy** when satisfied with quality
-
-The improved training should give you much better results than the original 10-epoch training!
+## Files in This Repo
+- `train_features.py` — batched DenseNet201 feature extraction + tokenizer
+- `train_torch.py` — PyTorch GPU decoder training
+- `convert_torch_to_keras.py` — weight conversion with logit gate
+- `evaluate.py` — batched BLEU/ROUGE evaluation
+- `inference/decoding.py` — greedy + beam search (production + eval)
+- `inference/manager.py` — NotebookProvider (loads model.h5, runs beam search)
+- `model/architecture.py` — `build_decoder()` (Keras) / `build_encoder()`
+- `weights/` — generated artefacts (gitignored)

@@ -24,35 +24,35 @@ const features: Feature[] = [
     icon: Zap,
     title: "Fast Prediction",
     description:
-      "Single-image inference completes in under two seconds thanks to a pre-computed feature pipeline and a lightweight LSTM decoder.",
+      "Warm in-domain captions in ~590 ms — a 53× serving win from incremental state-carrying beam search, fp16 features, and a feature cache.",
     accent: "from-amber-400 to-orange-500",
   },
   {
     icon: Brain,
-    title: "Deep Learning Powered",
+    title: "GRPO-Reinforced Decoder",
     description:
-      "Trained end-to-end on the Flickr8K dataset with categorical cross-entropy and Adam optimiser, using teacher-forcing and early stopping.",
+      "Cross-entropy pretraining, then Group Relative Policy Optimization against a CIDEr-D reward — BLEU-1 0.6559, word precision 70.7%.",
     accent: "from-indigo-400 to-purple-500",
   },
   {
     icon: Network,
-    title: "DenseNet201 Encoder",
+    title: "CLIP ViT-B/16 Features",
     description:
-      "Uses the ImageNet-pretrained DenseNet201 backbone with the classification head removed, producing a 1920-dim feature vector per image.",
+      "A frozen CLIP vision trunk (400M image-text pairs) supplies 196 patch tokens per image — language-aligned features that beat ImageNet backbones on every metric.",
     accent: "from-blue-400 to-cyan-500",
   },
   {
     icon: Repeat,
-    title: "LSTM Decoder",
+    title: "Bahdanau Attention",
     description:
-      "An LSTM with 256 units decodes the image feature vector into a token sequence one word at a time, conditioned on the previous tokens.",
+      "An additive attention head scores every image patch against the LSTM(512) state at each step, so the model learns WHERE to look for each word.",
     accent: "from-emerald-400 to-teal-500",
   },
   {
     icon: Cpu,
-    title: "TensorFlow Backend",
+    title: "Hybrid OOD Routing",
     description:
-      "The FastAPI service loads the exact Keras model from the notebook — no rewrite, no additional training, just inference.",
+      "The same CLIP trunk zero-shot classifies each image: real photos go to the specialist, cartoons/screenshots auto-route to BLIP — badged in the UI.",
     accent: "from-rose-400 to-pink-500",
   },
   {

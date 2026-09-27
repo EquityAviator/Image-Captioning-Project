@@ -1,0 +1,62 @@
+[
+  {
+    "image": "3688858505_e8afd1475d.jpg",
+    "generated": "woman in red dress and girl is standing on the street",
+    "references": [
+      "blond girl in green dress and elaborate gold necklace stands in front of few women and man",
+      "few people with girl standing up in the center wearing green dress",
+      "girl is wear green dress",
+      "blonde girl wearing green dress standing",
+      "woman in green dress being observed"
+    ],
+    "confidence": 0.25232832444210845
+  },
+  {
+    "image": "3689355450_fd559b816d.jpg",
+    "generated": "young boy in blue shirt in the park",
+    "references": [
+      "boy wearing plaid shorts jumping over big water fountain",
+      "man in plaid shorts is jumping over fountain",
+      "man is jumping over water fountain",
+      "man jumps near water fountain",
+      "the person wearing flannel shorts is jumping over fountain"
+    ],
+    "confidence": 0.20739129102892345
+  },
+  {
+    "image": "368954110_821ccf005c.jpg",
+    "generated": "two dogs are playing in the grass",
+    "references": [
+      "girl in purple top holds toddler between herself and another girl on the grass in front of bush",
+      "three children sit on the grass",
+      "three little children are sitting in the grass",
+      "three little girls are sitting on the grass",
+      "three young girls are sitting on the lawn"
+    ],
+    "confidence": 0.3280505994334817
+  },
+  {
+    "image": "3689727848_b53f931130.jpg",
+    "generated": "little boy is swimming in the pool",
+    "references": [
+      "boy tries to catch ball while jumping into pool",
+      "male dives for ball that flying over pool",
+      "male jumping into swimming pool",
+      "man dives into swimming pool at the hotel",
+      "the man is leaping off of the pool deck to catch football"
+    ],
+    "confidence": 0.24247229006141424
+  },
+  {
+    "image": "3689975998_72f50b6d91.jpg",
+    "generated": "man in red shirt is standing in the air",
+    "references": [
+      "an asian girl is running outside",
+      "an asian woman is running on rocky path",
+      "woman runs on chalk white path",
+      "woman runs on the beach",
+      "woman with long black hair and white shirt is running up the sand and tall weeds"
+    ],
+    "confidence": 0.2312204010784626
+  }
+]

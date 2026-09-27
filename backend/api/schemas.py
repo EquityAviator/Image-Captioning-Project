@@ -21,6 +21,10 @@ class PredictResponse(BaseModel):
     caption: str
     inference_time: str
     confidence: float = Field(..., description="Mean softmax confidence in [0,1].")
+    semantic_score: Optional[float] = Field(
+        None, description="Semantic agreement in [0,1]: how strongly THIS image supports the caption (BLIP PMI, logistic-mapped).")
+    semantic_pmi: Optional[float] = Field(
+        None, description="Raw BLIP PMI log-evidence (image-conditioned minus neutral-baseline mean log-prob).")
     provider: str
     success: bool
     error: Optional[str] = None
@@ -31,6 +35,7 @@ class BatchPredictItem(BaseModel):
     caption: str
     inference_time: str
     confidence: float
+    semantic_score: Optional[float] = None
     success: bool
     error: Optional[str] = None
 

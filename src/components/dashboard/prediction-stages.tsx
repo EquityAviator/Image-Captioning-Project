@@ -3,7 +3,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { STAGES, type StageKey } from "@/hooks/use-caption";
+import { stagesForProvider, type StageKey } from "@/hooks/use-caption";
+import { useSettings } from "@/lib/settings-store";
 
 interface Props {
   currentStage: StageKey;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function PredictionStages({ currentStage, stageIndex }: Props) {
+  const provider = useSettings((s) => s.inferenceProvider);
+  const STAGES = stagesForProvider(provider || "auto");
   const isError = currentStage === "error";
   const isDone = currentStage === "done";
 

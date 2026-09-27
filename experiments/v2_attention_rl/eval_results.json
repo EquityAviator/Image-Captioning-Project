@@ -1,0 +1,58 @@
+{
+  "checkpoint": "..\\experiments\\v2_attention_rl\\best.pt",
+  "epoch": 5,
+  "results": {
+    "greedy": {
+      "bleu1": 0.584,
+      "bleu2": 0.3664,
+      "bleu3": 0.2268,
+      "bleu4": 0.1487,
+      "rouge_l": 0.2507
+    },
+    "beam5_a1.2": {
+      "bleu1": 0.5971,
+      "bleu2": 0.3872,
+      "bleu3": 0.2456,
+      "bleu4": 0.1612,
+      "rouge_l": 0.2566
+    }
+  },
+  "samples": [
+    {
+      "img": "3688858505_e8afd1475d.jpg",
+      "greedy": "woman in white dress is standing in front of the man in the",
+      "beam5_a1.2": "two girls are in the",
+      "ref": "blond girl in green dress and elaborate gold necklace stands in front of few women and man | few people with girl standing up in the center wearing green dress"
+    },
+    {
+      "img": "3689355450_fd559b816d.jpg",
+      "greedy": "boy in blue shirt is jumping on the",
+      "beam5_a1.2": "boy in blue shirt is jumping in the air",
+      "ref": "boy wearing plaid shorts jumping over big water fountain | man in plaid shorts is jumping over fountain"
+    },
+    {
+      "img": "368954110_821ccf005c.jpg",
+      "greedy": "two girls are sitting on the grass",
+      "beam5_a1.2": "two girls are sitting on the grass",
+      "ref": "girl in purple top holds toddler between herself and another girl on the grass in front of bush | three children sit on the grass"
+    },
+    {
+      "img": "3689727848_b53f931130.jpg",
+      "greedy": "man is in the water",
+      "beam5_a1.2": "group of people are in swimming pool",
+      "ref": "boy tries to catch ball while jumping into pool | male dives for ball that flying over pool"
+    },
+    {
+      "img": "3689975998_72f50b6d91.jpg",
+      "greedy": "woman in white shirt and blue jeans is walking on the grass",
+      "beam5_a1.2": "woman in white shirt is walking on the grass",
+      "ref": "an asian girl is running outside | an asian woman is running on rocky path"
+    },
+    {
+      "img": "3690107455_0fdb4ecee7.jpg",
+      "greedy": "man in blue shorts is standing on the beach",
+      "beam5_a1.2": "man is standing on the beach",
+      "ref": "woman is climbing rocky hill overshadowed by partly cloudy sky | woman nears cliff edge"
+    }
+  ]
+}

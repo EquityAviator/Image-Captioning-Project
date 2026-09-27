@@ -27,13 +27,14 @@ const sora = Sora({
 export const metadata: Metadata = {
   title: "CaptionAI — AI Image Caption Generator",
   description:
-    "Generate natural language descriptions for any image using Deep Learning. Powered by DenseNet201 encoder and LSTM decoder trained on Flickr8K.",
+    "Generate natural language descriptions for any image using Deep Learning. Powered by CLIP ViT-B/16 features and a GRPO-reinforced attention LSTM trained on Flickr8K.",
   keywords: [
     "Image Captioning",
     "Deep Learning",
-    "DenseNet201",
+    "CLIP",
+    "GRPO",
     "LSTM",
-    "TensorFlow",
+    "PyTorch",
     "Flickr8K",
     "AI",
     "Computer Vision",

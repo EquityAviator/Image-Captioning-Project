@@ -25,13 +25,39 @@ export interface Stage {
   description: string;
 }
 
+// Default text describes the PRODUCTION pipeline (CLIP+GRPO champion),
+// which is what "auto" and "attention" serve ~90% of the time.
 export const STAGES: Stage[] = [
   { key: "uploading", label: "Uploading", description: "Sending image to the API…" },
-  { key: "extracting", label: "Extracting Features", description: "Running DenseNet201 encoder…" },
-  { key: "encoding", label: "Encoding", description: "Projecting image features to 256-dim…" },
-  { key: "decoding", label: "Generating Caption", description: "Running LSTM decoder word by word…" },
+  { key: "extracting", label: "Extracting Features", description: "Running CLIP ViT-B/16 encoder — 196 image patches…" },
+  { key: "encoding", label: "Encoding", description: "Router check + attention over image patches…" },
+  { key: "decoding", label: "Generating Caption", description: "GRPO-tuned LSTM decoder, beam search…" },
   { key: "done", label: "Done", description: "Caption ready!" },
 ];
+
+const BLIP_STAGES: Partial<Record<StageKey, string>> = {
+  extracting: "Running BLIP vision encoder…",
+  encoding: "Preparing visual features for the decoder…",
+  decoding: "Generating caption with BLIP…",
+};
+
+// Legacy Gen-1 (Notebook TF) pipeline — the old descriptions are accurate here.
+const LEGACY_STAGES: Partial<Record<StageKey, string>> = {
+  extracting: "Running DenseNet201 encoder…",
+  encoding: "Projecting image features to 256-dim…",
+  decoding: "Running LSTM decoder word by word…",
+};
+
+export function stagesForProvider(provider: string): Stage[] {
+  const map =
+    provider === "huggingface-blip"
+      ? BLIP_STAGES
+      : provider === "notebook-tensorflow"
+        ? LEGACY_STAGES
+        : null;
+  if (!map) return STAGES;
+  return STAGES.map((s) => ({ ...s, description: map[s.key] ?? s.description }));
+}
 
 interface UseCaptionReturn {
   isLoading: boolean;

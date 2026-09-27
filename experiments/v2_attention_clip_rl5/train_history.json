@@ -1,0 +1,103 @@
+{
+  "pre": {
+    "bleu1": 0.6092,
+    "bleu2": 0.412,
+    "bleu3": 0.2672,
+    "bleu4": 0.1755,
+    "rouge_l": 0.2747,
+    "cider_d": 0.6207,
+    "chair_img_rate": 0.6186,
+    "hallu_noun_rate": 0.3627,
+    "len": 7.59,
+    "eval_seconds": 34.0
+  },
+  "pre_J": 0.0020999999999999908,
+  "history": [
+    {
+      "bleu1": 0.6106,
+      "bleu2": 0.4066,
+      "bleu3": 0.2564,
+      "bleu4": 0.1708,
+      "rouge_l": 0.2629,
+      "cider_d": 0.4729,
+      "chair_img_rate": 0.3377,
+      "hallu_noun_rate": 0.2426,
+      "len": 5.72,
+      "eval_seconds": 28.6,
+      "reward": 0.1734,
+      "epoch": 1,
+      "J": 0.1352
+    },
+    {
+      "bleu1": 0.5925,
+      "bleu2": 0.3739,
+      "bleu3": 0.2218,
+      "bleu4": 0.1502,
+      "rouge_l": 0.2546,
+      "cider_d": 0.3702,
+      "chair_img_rate": 0.2578,
+      "hallu_noun_rate": 0.2177,
+      "len": 5.0,
+      "eval_seconds": 28.3,
+      "reward": 0.3089,
+      "epoch": 2,
+      "J": 0.1124
+    },
+    {
+      "bleu1": 0.5941,
+      "bleu2": 0.3729,
+      "bleu3": 0.2185,
+      "bleu4": 0.1478,
+      "rouge_l": 0.2546,
+      "cider_d": 0.3641,
+      "chair_img_rate": 0.2488,
+      "hallu_noun_rate": 0.2144,
+      "len": 5.0,
+      "eval_seconds": 28.3,
+      "reward": 0.3667,
+      "epoch": 3,
+      "J": 0.1153
+    },
+    {
+      "bleu1": 0.6452,
+      "bleu2": 0.3865,
+      "bleu3": 0.2097,
+      "bleu4": 0.1354,
+      "rouge_l": 0.2603,
+      "cider_d": 0.3788,
+      "chair_img_rate": 0.2455,
+      "hallu_noun_rate": 0.2096,
+      "len": 6.34,
+      "eval_seconds": 29.9,
+      "reward": 0.393,
+      "epoch": 4,
+      "J": 0.1333
+    },
+    {
+      "bleu1": 0.6491,
+      "bleu2": 0.3852,
+      "bleu3": 0.2039,
+      "bleu4": 0.1294,
+      "rouge_l": 0.2579,
+      "cider_d": 0.3809,
+      "chair_img_rate": 0.2397,
+      "hallu_noun_rate": 0.2061,
+      "len": 6.76,
+      "eval_seconds": 28.8,
+      "reward": 0.4155,
+      "epoch": 5,
+      "J": 0.1412
+    }
+  ],
+  "config": {
+    "epochs": 5,
+    "images_per_step": 4,
+    "group": 5,
+    "lr": 1e-05,
+    "max_len": 24,
+    "seed": 42,
+    "chair_lambda": 0.05,
+    "calib_gamma": 0.02,
+    "limit": 0
+  }
+}

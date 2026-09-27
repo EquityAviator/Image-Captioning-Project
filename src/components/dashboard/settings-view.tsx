@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Brain,
   Cpu,
+  Eye,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,9 @@ const themes: { key: ThemeMode; label: string; icon: typeof Moon }[] = [
 ];
 
 const providers: { key: InferenceProvider; label: string; description: string; icon: typeof Brain }[] = [
-  { key: "auto", label: "Auto", description: "Automatically select best available provider", icon: Brain },
-  { key: "notebook-tensorflow", label: "Notebook (TensorFlow)", description: "Exact DenseNet201 + LSTM from Flickr8K notebook", icon: Brain },
+  { key: "auto", label: "Auto (trained CLIP+GRPO)", description: "Best model — CLIP ViT-B/16 + GRPO attention decoder (recommended)", icon: Brain },
+  { key: "attention", label: "Attention v2 (CLIP + GRPO)", description: "Explicitly pin the trained PyTorch attention decoder", icon: Eye as unknown as typeof Brain },
+  { key: "notebook-tensorflow", label: "Notebook (TensorFlow)", description: "Legacy Gen-1 DenseNet201 + LSTM — much weaker, for comparison only", icon: Cpu },
   { key: "huggingface-blip", label: "HuggingFace BLIP", description: "Pre-trained BLIP base model (works out of the box)", icon: Cpu },
 ];
 

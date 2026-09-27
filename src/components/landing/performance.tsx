@@ -16,51 +16,75 @@ interface Stat {
 
 const stats: Stat[] = [
   {
-    icon: TrendingDown,
-    label: "Training Loss",
-    value: 2.84,
-    decimals: 2,
-    accent: "text-rose-400",
-    description: "Final categorical cross-entropy on the training set.",
+    icon: Target,
+    label: "BLEU-1 Score",
+    value: 0.6559,
+    decimals: 4,
+    accent: "text-emerald-400",
+    description: "Beam-5 (GNMT α=1.2) on the full 1,214-image validation split — production champion.",
   },
   {
     icon: Target,
-    label: "Validation Loss",
-    value: 3.21,
-    decimals: 2,
-    accent: "text-amber-400",
-    description: "Final categorical cross-entropy on the held-out 15% split.",
+    label: "BLEU-4 Score",
+    value: 0.1727,
+    decimals: 4,
+    accent: "text-emerald-400",
+    description: "Same protocol. +42% over the Gen-1 baseline (0.1218).",
+  },
+  {
+    icon: Target,
+    label: "ROUGE-L Score",
+    value: 0.2782,
+    decimals: 4,
+    accent: "text-emerald-400",
+    description: "Recall-oriented LCS metric on the full validation split.",
+  },
+  {
+    icon: Target,
+    label: "CIDEr-D Score",
+    value: 0.5243,
+    decimals: 4,
+    accent: "text-emerald-400",
+    description: "Direct pycocoevalcap measurement — the reward signal GRPO was tuned against.",
   },
   {
     icon: Database,
     label: "Dataset Size",
     value: 8091,
     accent: "text-indigo-400",
-    description: "Flickr8K images, each with 5 reference captions.",
+    description: "Flickr8K images, each with 5 reference captions (40,455 total).",
   },
   {
     icon: Type,
     label: "Vocabulary Size",
-    value: 8476,
+    value: 6000,
     accent: "text-purple-400",
-    description: "Unique tokens after preprocessing (len(word_index) + 1).",
+    description: "BPE subword tokens — no UNK, rare words compose from pieces.",
   },
   {
     icon: Clock,
     label: "Max Caption Length",
-    value: 35,
+    value: 38,
     suffix: " tok",
     accent: "text-emerald-400",
-    description: "Maximum number of tokens generated per caption.",
+    description: "Maximum tokens per caption; a min-length guard holds output ≥ 8.",
   },
   {
     icon: Cpu,
-    label: "Inference Time",
-    value: 1.4,
-    decimals: 1,
-    suffix: " s",
+    label: "Inference Time (CPU)",
+    value: 590,
+    suffix: " ms",
     accent: "text-cyan-400",
-    description: "Average wall-clock per image on CPU (encoder + decoder).",
+    description: "Warm median per image on CPU (beam-5 + calibrated confidence) — 53× faster than the original 31.6 s.",
+  },
+  {
+    icon: TrendingDown,
+    label: "Word Precision",
+    value: 70.7,
+    decimals: 1,
+    suffix: " %",
+    accent: "text-emerald-400",
+    description: "Share of predicted words found in the human references — up from 63.9% pre-RL.",
   },
 ];
 
@@ -152,9 +176,9 @@ export function Performance() {
           transition={{ delay: 0.4 }}
           className="mt-8 text-center text-xs text-muted-foreground"
         >
-          Metrics shown are representative of the notebook’s published training
-          run. Exact numbers depend on the random seed and number of epochs
-          completed before early stopping triggers.
+          All metrics measured on the full 1,214-image Flickr8K validation
+          split with the same protocol (beam-5, GNMT α=1.2, seed 42) and
+          reproducible from the saved evaluation artifacts.
         </motion.p>
       </div>
     </section>

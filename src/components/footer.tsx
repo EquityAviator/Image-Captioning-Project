@@ -26,9 +26,9 @@ export function Footer() {
             </div>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
               An end-to-end AI web application that converts images into natural
-              language descriptions using a DenseNet201 encoder and LSTM decoder
-              trained on the Flickr8K dataset. Built with Next.js, FastAPI, and
-              TensorFlow.
+              language descriptions using CLIP ViT-B/16 patch features and a
+              GRPO-reinforced attention LSTM trained on the Flickr8K dataset.
+              Built with Next.js, FastAPI, and PyTorch.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <a
@@ -118,22 +118,22 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://keras.io/api/applications/densenet/"
+                  href="https://github.com/mlfoundations/open_clip"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  DenseNet201
+                  CLIP ViT-B/16
                 </a>
               </li>
               <li>
                 <a
-                  href="https://www.tensorflow.org/"
+                  href="https://pytorch.org/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  TensorFlow
+                  PyTorch
                 </a>
               </li>
               <li>
@@ -156,7 +156,7 @@ export function Footer() {
           </p>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             Built with <Heart className="h-3 w-3 fill-rose-500 text-rose-500" /> using
-            TensorFlow & Next.js
+            PyTorch & Next.js
           </p>
         </div>
       </div>

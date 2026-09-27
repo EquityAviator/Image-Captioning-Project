@@ -12,20 +12,20 @@ const steps = [
   },
   {
     icon: Brain,
-    label: "DenseNet201",
-    sub: "Encoder",
+    label: "CLIP ViT-B/16",
+    sub: "Frozen vision trunk",
     color: "from-indigo-400 to-purple-500",
   },
   {
     icon: Type,
-    label: "Feature Vector",
-    sub: "1920-dim",
+    label: "Patch Features",
+    sub: "196 × 768-dim",
     color: "from-purple-400 to-fuchsia-500",
   },
   {
     icon: Repeat,
-    label: "LSTM Decoder",
-    sub: "256 units",
+    label: "Attention LSTM",
+    sub: "Bahdanau + GRPO",
     color: "from-emerald-400 to-teal-500",
   },
   {
@@ -127,15 +127,17 @@ export function Architecture() {
         >
           <div className="rounded-2xl border border-border/40 bg-card/40 p-6 backdrop-blur-sm">
             <p className="text-center text-sm leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-foreground">Encoder:</span> A
-              pretrained DenseNet201 (with the final classification layer
-              removed) reduces each 224×224×3 image to a 1920-dim feature vector
-              via global average pooling.{" "}
-              <span className="font-semibold text-foreground">Decoder:</span> A
-              Dense(256) layer projects the image features, which are
-              concatenated with a 256-dim word embedding and fed to an LSTM.
-              Residual addition and two dropout layers (0.5) regularise the
-              output before a final softmax over the vocabulary.
+              <span className="font-semibold text-foreground">Encoder:</span>{" "}
+              A frozen CLIP ViT-B/16 vision trunk (pretrained on 400M
+              image-text pairs) turns each 224×224×3 image into 196 patch
+              tokens of 768 dims — spatial detail that global average pooling
+              would erase.{" "}
+              <span className="font-semibold text-foreground">Decoder:</span>{" "}
+              A Bahdanau additive attention head scores every patch against
+              the LSTM(512) state at each step, so the model learns WHERE to
+              look for each word. Weights are fine-tuned with GRPO against a
+              CIDEr-D reward, then decoded with beam-5 search and a min-length
+              guard.
             </p>
           </div>
         </motion.div>

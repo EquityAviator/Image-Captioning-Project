@@ -1,0 +1,12 @@
+{
+  "bleu1": 0.6092,
+  "bleu2": 0.412,
+  "bleu3": 0.2672,
+  "bleu4": 0.1755,
+  "rouge_l": 0.2747,
+  "cider_d": 0.6207,
+  "chair_img_rate": 0.6186,
+  "hallu_noun_rate": 0.3627,
+  "len": 7.59,
+  "eval_seconds": 34.0
+}

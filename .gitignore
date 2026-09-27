@@ -54,20 +54,80 @@ server.log
 /skills/
 
 # CaptionAI — model artefacts (trained weights, tokenizers, caches)
+# KEEP: champion model and essential fallbacks, tokenizer, image index
+# IGNORE: large caches, training checkpoints, failed experiments, auto-downloadable models
+
+# Large feature caches (regenerable from scripts)
+/weights/clip_features_spatial.npy
+/weights/features_spatial.npy
+
+# Large auto-downloadable models (BLIP downloads on demand)
+/weights/blip/
+
+# Legacy/failed experiment checkpoints (only best.pt kept for key models)
+/experiments/*/ckpt_last.pt
+/experiments/v2_attention_tf/
+/experiments/v2_global/
+
+# Legacy Keras/TensorFlow models (Gen-1 baseline, comparison only)
 /weights/*.h5
 /weights/*.keras
 /weights/*.pkl
+
+# Tokenizer cache files (regenerable)
 /weights/*.json
-/weights/*.bin
-/weights/*.safetensors
+!/weights/bpe/tokenizer.json
+!/weights/bpe/bpe_stats.json
+!/weights/bpe/encoded_captions.json
+!/weights/image_names.json
+!/weights/image_id_to_index.json
+!/weights/metadata.json
+!/weights/preprocessing_metadata.json
 
-# CaptionAI — backend virtualenv & cache
-/backend/.venv/
-/backend/__pycache__/
-/backend/**/__pycache__/
-*.pyc
+# Legacy Keras/TensorFlow models (Gen-1 baseline, comparison only)
+/weights/*.h5
+/weights/*.keras
+/weights/*.pkl
 
-# CaptionAI — runtime logs
-/backend.log
-/backend-supervisor.log
-/backend-*.log
+# Large model files (only keep champion + essential fallbacks)
+*.bin
+*.safetensors
+*.pt
+!/experiments/v2_attention_clip_rl/best.pt
+!/experiments/v2_attention_clip/best.pt
+!/experiments/v2_attention/best.pt
+!/experiments/v2_attention_rl/best.pt
+
+# CaptionAI — dataset (keep only captions.txt, not images)
+/dataset/Images/
+
+# OS/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# UV cache
+.uv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Tensorflow
+*.pb
+*.tflite
+*.onnx
+*.pb
+
+# large model files
+*.bin
+*.safetensors
+*.pt
+!/experiments/v2_attention_clip_rl/best.pt
+!/experiments/v2_attention_clip/best.pt
+!/experiments/v2_attention/best.pt
+!/experiments/v2_attention_rl/best.pt

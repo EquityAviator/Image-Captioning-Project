@@ -34,7 +34,7 @@ export function Hero() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <span>Powered by DenseNet201 + LSTM • TensorFlow Backend</span>
+            <span>Powered by CLIP ViT-B/16 + GRPO-tuned Attention LSTM</span>
           </motion.div>
 
           {/* Title */}
@@ -57,8 +57,10 @@ export function Hero() {
             className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl"
           >
             Generate natural language descriptions for any image using Deep
-            Learning. A production-ready pipeline combining a DenseNet201
-            encoder, an LSTM decoder, and the Flickr8K dataset.
+            Learning. A production-ready pipeline combining CLIP ViT-B/16
+            patch features, Bahdanau attention, and a GRPO-reinforced LSTM
+            decoder trained on Flickr8K — with automatic fallback to BLIP for
+            out-of-domain images.
           </motion.p>
 
           {/* CTAs */}
@@ -98,9 +100,11 @@ export function Hero() {
             {[
               "Next.js 16",
               "FastAPI",
-              "TensorFlow 2.21",
-              "DenseNet201",
-              "LSTM",
+              "PyTorch",
+              "CLIP ViT-B/16",
+              "Bahdanau Attention",
+              "GRPO",
+              "BPE-6k",
               "Flickr8K",
               "Tailwind CSS 4",
               "shadcn/ui",
